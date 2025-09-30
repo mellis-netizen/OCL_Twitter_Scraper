@@ -1,15 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)",
+      "mcp__ruv-swarm",
+      "mcp__claude-flow@alpha",
+      "mcp__flow-nexus",
       "Bash(find:*)",
-      "Bash(grep:*)",
-      "Bash(chmod:*)",
-      "Bash(python test:*)",
-      "Bash(python3:*)",
-      "Bash(pip3 install:*)",
-      "Bash(rm:*)"
+      "Bash(ls:*)",
+      "Bash(python:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(mkdir:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "claude-flow@alpha",
+    "ruv-swarm",
+    "flow-nexus"
+  ]
 }

@@ -54,23 +54,19 @@ class EmailNotifier:
         return header.strip()
 
     def _sanitize_content(self, content: str, escape_html: bool = True) -> str:
-        """Sanitize email content."""
+        """Enhanced sanitize email content with comprehensive security."""
         if not content or not isinstance(content, str):
             return ""
 
-        # Remove null bytes and control characters
-        content = ''.join(char for char in content if ord(char) >= 32 or char in '\t\n\r')
-
-        # Only escape HTML if requested (for plain text content, not HTML structure)
+        # Use enhanced sanitization from utils
+        from utils import sanitize_text, sanitize_html_content
+        
         if escape_html:
-            import html
-            content = html.escape(content)
-
-        # Limit content size to prevent memory issues
-        if len(content) > 1024 * 1024:  # 1MB limit
-            content = content[:1024 * 1024]
-
-        return content
+            # For plain text content, use text sanitization with HTML escaping
+            return sanitize_text(content, max_length=1024*1024, escape_html=True)
+        else:
+            # For HTML content, use HTML-specific sanitization
+            return sanitize_html_content(content)
 
     def _clean_summary(self, summary: str) -> str:
         """Clean up article summary for email display."""
@@ -81,16 +77,21 @@ class EmailNotifier:
         import re
         summary = re.sub(r'<[^>]+>', '', summary)
 
-        # Clean up common RSS artifacts
-        summary = summary.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+        # Clean up common RSS artifacts (but be careful with entity decoding)
+        import html
+        summary = html.unescape(summary)  # Properly decode HTML entities
         summary = re.sub(r'The post.*?appeared on.*$', '', summary)
         summary = re.sub(r'^\s*TLDR\s*', '', summary)
 
-        # Truncate and add ellipsis if needed
-        if len(summary) > 300:
-            summary = summary[:300].rsplit(' ', 1)[0] + '...'
+        # Enhanced sanitization with truncation
+        from utils import sanitize_text
+        return sanitize_text(summary.strip(), max_length=300, escape_html=True)
 
-        return self._sanitize_content(summary.strip())
+    def _sanitize_url(self, url: str) -> str:
+        """Sanitize URLs for safe inclusion in emails."""
+        from utils import validate_and_sanitize_url
+        sanitized = validate_and_sanitize_url(url)
+        return sanitized if sanitized else "#"
 
     def _validate_email_config(self) -> bool:
         """Validate email configuration."""
@@ -675,7 +676,7 @@ class EmailNotifier:
                                 <strong>Source:</strong> {self._sanitize_content(art.get('source_name',''))} |
                                 <strong>Published:</strong> {pub_str}
                             </div>
-                            <div><a href="{art.get('link') or '#'}" class="link" target="_blank">Read Full Article →</a></div>
+                            <div><a href="{self._sanitize_url(art.get('link'))}" class="link" target="_blank" rel="noopener noreferrer">Read Full Article →</a></div>
                             <div class="keyword-info" style="margin: 8px 0; padding: 8px; background-color: #fff8e1; border-left: 4px solid #ffa000; border-radius: 4px;">
                                 <strong>🔍 Triggering Keywords:</strong> {keys or '<span style="color: #666;">None detected</span>'}
                                 {f'<br><strong>🪙 Token Symbols:</strong> {token_tags}' if token_tags else ''}
@@ -757,7 +758,7 @@ class EmailNotifier:
                                 <strong>Engagement:</strong> {tweet.get('retweet_count',0)} RTs, {tweet.get('favorite_count',0)} Likes |
                                 <strong>Followers:</strong> {tweet.get('user',{}).get('followers_count',0):,}
                             </div>
-                            <div><a href="{tweet.get('url') or '#'}" class="link" target="_blank">View Tweet →</a></div>
+                            <div><a href="{self._sanitize_url(tweet.get('url'))}" class="link" target="_blank" rel="noopener noreferrer">View Tweet →</a></div>
                             <div class="tweet-content">{self._sanitize_content(tweet.get('text',''))}</div>
                             <div class="keyword-info" style="margin: 8px 0; padding: 8px; background-color: #fff8e1; border-left: 4px solid #ffa000; border-radius: 4px;">
                                 <strong>🔍 Triggering Keywords:</strong> {keys or '<span style="color: #666;">None detected</span>'}

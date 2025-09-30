@@ -184,30 +184,162 @@ def validate_email(email: str) -> bool:
     return re.match(pattern, email) is not None
 
 
-def sanitize_text(text: str, max_length: int = 1000) -> str:
+def sanitize_text(text: str, max_length: int = 1000, escape_html: bool = True) -> str:
     """
-    Sanitize text by removing unwanted characters and limiting length.
+    Enhanced sanitize text with comprehensive security protections.
     
     Args:
         text: Text to sanitize
         max_length: Maximum length of the text
+        escape_html: Whether to escape HTML entities for security
         
     Returns:
         Sanitized text
     """
-    if not text:
+    if not text or not isinstance(text, str):
         return ""
     
-    # Remove control characters and normalize whitespace
     import re
-    text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
+    import html
+    
+    # Remove null bytes and other dangerous characters
+    text = text.replace('\x00', '')
+    
+    # Remove control characters (except tabs, newlines, carriage returns)
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    
+    # Remove potentially dangerous Unicode characters
+    # Remove zero-width characters that could be used for obfuscation
+    text = re.sub(r'[\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]', '', text)
+    
+    # Remove script injection patterns (basic protection)
+    dangerous_patterns = [
+        r'<\s*script[^>]*>.*?<\s*/\s*script\s*>',
+        r'javascript\s*:',
+        r'vbscript\s*:',
+        r'data\s*:',
+        r'on\w+\s*=',  # onclick, onload, etc.
+    ]
+    
+    for pattern in dangerous_patterns:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Escape HTML entities for security if requested
+    if escape_html:
+        text = html.escape(text, quote=True)
+    
+    # Normalize whitespace
     text = re.sub(r'\s+', ' ', text).strip()
     
-    # Limit length
+    # Limit length with intelligent truncation
     if len(text) > max_length:
-        text = text[:max_length-3] + "..."
+        # Try to truncate at word boundary
+        if max_length > 10:
+            truncated = text[:max_length-3].rsplit(' ', 1)[0]
+            if len(truncated) >= max_length * 0.8:  # If we got at least 80% of desired length
+                text = truncated + "..."
+            else:
+                text = text[:max_length-3] + "..."
+        else:
+            text = text[:max_length-3] + "..."
     
     return text
+
+
+def sanitize_html_content(content: str) -> str:
+    """
+    Sanitize HTML content for safe email inclusion.
+    
+    Args:
+        content: HTML content to sanitize
+        
+    Returns:
+        Sanitized HTML content
+    """
+    if not content or not isinstance(content, str):
+        return ""
+    
+    import re
+    import html
+    
+    # Remove dangerous HTML elements entirely
+    dangerous_tags = [
+        'script', 'iframe', 'object', 'embed', 'form', 'input', 
+        'textarea', 'button', 'select', 'option', 'meta', 'link',
+        'style', 'base', 'applet', 'svg'
+    ]
+    
+    for tag in dangerous_tags:
+        # Remove both opening and closing tags
+        content = re.sub(f'<\s*{tag}[^>]*>.*?<\s*/\s*{tag}\s*>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(f'<\s*{tag}[^>]*/?>', '', content, flags=re.IGNORECASE)
+    
+    # Remove dangerous attributes from remaining tags
+    dangerous_attrs = [
+        'onclick', 'onload', 'onmouseover', 'onerror', 'onsubmit',
+        'onchange', 'onfocus', 'onblur', 'onkeydown', 'onkeyup',
+        'style', 'javascript:', 'vbscript:', 'data:'
+    ]
+    
+    for attr in dangerous_attrs:
+        content = re.sub(f'{attr}\s*=\s*["\'][^"\']*["\']', '', content, flags=re.IGNORECASE)
+        content = re.sub(f'{attr}\s*=\s*[^>\s]*', '', content, flags=re.IGNORECASE)
+    
+    # Limit content size to prevent DoS
+    if len(content) > 1024 * 1024:  # 1MB limit
+        content = content[:1024 * 1024]
+    
+    return content
+
+
+def validate_and_sanitize_url(url: str) -> str:
+    """
+    Validate and sanitize URLs for safe inclusion in emails.
+    
+    Args:
+        url: URL to validate and sanitize
+        
+    Returns:
+        Sanitized URL or empty string if invalid
+    """
+    if not url or not isinstance(url, str):
+        return ""
+    
+    import re
+    from urllib.parse import urlparse, urlunparse
+    
+    # Remove potentially dangerous characters
+    url = url.strip().replace('\x00', '').replace('\n', '').replace('\r', '')
+    
+    # Check for dangerous schemes
+    dangerous_schemes = ['javascript', 'vbscript', 'data', 'file']
+    
+    try:
+        parsed = urlparse(url)
+        
+        # Reject dangerous schemes
+        if parsed.scheme.lower() in dangerous_schemes:
+            return ""
+        
+        # Only allow http and https for external links
+        if parsed.scheme and parsed.scheme.lower() not in ['http', 'https']:
+            return ""
+        
+        # Basic validation
+        if not parsed.netloc and parsed.scheme:  # Has scheme but no domain
+            return ""
+        
+        # Reconstruct URL to normalize it
+        clean_url = urlunparse(parsed)
+        
+        # Additional length check
+        if len(clean_url) > 2048:  # Standard URL length limit
+            return ""
+        
+        return clean_url
+        
+    except Exception:
+        return ""
 
 
 def format_timestamp(timestamp: Optional[datetime] = None, format_str: str = "%Y-%m-%d %H:%M:%S UTC") -> str:
