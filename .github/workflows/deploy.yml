@@ -1,0 +1,131 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  APP_NAME: crypto-tge-monitor
+  DEPLOY_PATH: /opt/crypto-tge-monitor
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: 22
+        timeout: 300s
+        script: |
+          set -e
+
+          # Colors for output
+          GREEN='\033[0;32m'
+          YELLOW='\033[1;33m'
+          RED='\033[0;31m'
+          NC='\033[0m'
+
+          log() {
+              echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
+          }
+
+          warn() {
+              echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $1${NC}"
+          }
+
+          error() {
+              echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1${NC}"
+              exit 1
+          }
+
+          log "Starting automated deployment from GitHub..."
+
+          # Check if service exists and is running
+          if sudo systemctl list-units --full -all | grep -q "crypto-tge-monitor.service"; then
+              log "Stopping crypto-tge-monitor service..."
+              sudo systemctl stop crypto-tge-monitor || true
+          else
+              warn "Service not found - this might be the first deployment"
+          fi
+
+          # Create backup
+          log "Creating backup of current deployment..."
+          if [ -d "/opt/crypto-tge-monitor/current" ]; then
+              sudo mv /opt/crypto-tge-monitor/current /opt/crypto-tge-monitor/backup-$(date +%Y%m%d_%H%M%S)
+          fi
+
+          # Clone/update repository
+          log "Pulling latest code from GitHub..."
+          if [ -d "/opt/crypto-tge-monitor/repo" ]; then
+              cd /opt/crypto-tge-monitor/repo
+              sudo git fetch origin
+              sudo git reset --hard origin/main
+              sudo git clean -fd
+          else
+              sudo git clone https://github.com/${{ github.repository }}.git /opt/crypto-tge-monitor/repo
+              cd /opt/crypto-tge-monitor/repo
+          fi
+
+          # Deploy new code
+          log "Deploying new application code..."
+          sudo mkdir -p /opt/crypto-tge-monitor/current
+          sudo cp -r src/ /opt/crypto-tge-monitor/current/
+          sudo cp config.py /opt/crypto-tge-monitor/current/
+          sudo cp requirements.txt /opt/crypto-tge-monitor/current/
+          sudo cp CLAUDE.md /opt/crypto-tge-monitor/current/
+
+          # Update dependencies if virtual environment exists
+          if [ -d "/opt/crypto-tge-monitor/venv" ]; then
+              log "Updating Python dependencies..."
+              sudo -u crypto-tge-monitor /opt/crypto-tge-monitor/venv/bin/pip install -r /opt/crypto-tge-monitor/current/requirements.txt
+          else
+              warn "Virtual environment not found - run initial deployment first"
+              exit 1
+          fi
+
+          # Set proper ownership
+          sudo chown -R crypto-tge-monitor:crypto-tge-monitor /opt/crypto-tge-monitor/current
+
+          # Start the service
+          log "Starting crypto-tge-monitor service..."
+          if sudo systemctl list-units --full -all | grep -q "crypto-tge-monitor.service"; then
+              sudo systemctl start crypto-tge-monitor
+          else
+              error "Service not installed - run initial deployment script first"
+          fi
+
+          # Wait and check status
+          sleep 10
+          if sudo systemctl is-active --quiet crypto-tge-monitor; then
+              log "✅ Deployment successful! Service is running."
+              sudo systemctl status crypto-tge-monitor --no-pager -l
+          else
+              error "❌ Service failed to start after deployment!"
+          fi
+
+          log "🚀 Deployment completed successfully!"
+
+    - name: Notify on success
+      if: success()
+      run: |
+        echo "✅ Deployment to EC2 completed successfully!"
+        echo "🔗 Commit: ${{ github.sha }}"
+        echo "👤 Author: ${{ github.actor }}"
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Deployment to EC2 failed!"
+        echo "🔗 Commit: ${{ github.sha }}"
+        echo "👤 Author: ${{ github.actor }}"
+        exit 1

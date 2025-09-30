@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+
+rule_files:
+  # - "alert_rules.yml"
+
+scrape_configs:
+  # Crypto TGE Monitor metrics
+  - job_name: 'crypto-tge-monitor'
+    static_configs:
+      - targets: ['crypto-tge-monitor:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 60s
+    scrape_timeout: 10s
+    
+  # NGINX metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: '/nginx_status'
+    scrape_interval: 30s
+    
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

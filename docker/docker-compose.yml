@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  crypto-tge-monitor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: crypto-tge-monitor:latest
+    container_name: crypto-tge-monitor
+    restart: unless-stopped
+    
+    environment:
+      - LOG_LEVEL=INFO
+      - LOG_FILE=/var/log/crypto-tge-monitor/crypto_monitor.log
+      
+    env_file:
+      - ../.env
+    
+    volumes:
+      # State persistence
+      - crypto-tge-state:/var/lib/crypto-tge-monitor
+      # Log persistence
+      - crypto-tge-logs:/var/log/crypto-tge-monitor
+      # Optional: Mount config file
+      - ../.env:/app/.env:ro
+    
+    ports:
+      # Health check endpoint
+      - "8080:8080"
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Network
+    networks:
+      - crypto-tge-network
+
+  # Optional: NGINX proxy for health checks
+  nginx:
+    image: nginx:alpine
+    container_name: crypto-tge-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Optional: SSL certificates
+      # - ./ssl:/etc/nginx/ssl:ro
+    
+    depends_on:
+      crypto-tge-monitor:
+        condition: service_healthy
+    
+    networks:
+      - crypto-tge-network
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # Optional: Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: crypto-tge-prometheus
+    restart: unless-stopped
+    
+    ports:
+      - "9090:9090"
+    
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    
+    networks:
+      - crypto-tge-network
+
+  # Optional: Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: crypto-tge-grafana
+    restart: unless-stopped
+    
+    ports:
+      - "3000:3000"
+    
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    
+    depends_on:
+      - prometheus
+    
+    networks:
+      - crypto-tge-network
+
+volumes:
+  crypto-tge-state:
+    driver: local
+  crypto-tge-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  crypto-tge-network:
+    driver: bridge
