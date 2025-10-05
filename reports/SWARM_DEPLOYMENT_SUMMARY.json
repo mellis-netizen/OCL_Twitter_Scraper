@@ -1,0 +1,280 @@
+{
+  "deployment_info": {
+    "deployment_id": "tge-swarm-1759648438",
+    "start_time": "2025-10-05T00:13:58.739573",
+    "agents_deployed": {
+      "scraping-specialist": {
+        "deployment_memory_id": "mock_scraping-specialist_deployment-info",
+        "config": {
+          "role": "code-analyzer",
+          "specialization": "Web scraping and data collection optimization",
+          "target_files": [
+            "src/news_scraper.py",
+            "src/news_scraper_optimized.py",
+            "src/twitter_monitor.py",
+            "src/twitter_monitor_optimized.py",
+            "src/utils.py"
+          ],
+          "focus_areas": [
+            "rate-limiting-compliance",
+            "scraping-efficiency",
+            "error-handling-robustness",
+            "concurrent-processing"
+          ],
+          "analysis_depth": "comprehensive"
+        },
+        "status": "deployed"
+      },
+      "keyword-analyzer": {
+        "deployment_memory_id": "mock_keyword-analyzer_deployment-info",
+        "config": {
+          "role": "algorithm-optimizer",
+          "specialization": "Keyword matching and semantic analysis",
+          "target_files": [
+            "config.py",
+            "src/news_scraper.py",
+            "src/main.py",
+            "src/main_optimized.py"
+          ],
+          "focus_areas": [
+            "keyword-matching-accuracy",
+            "false-positive-reduction",
+            "company-name-disambiguation",
+            "semantic-analysis"
+          ],
+          "analysis_depth": "deep-semantic"
+        },
+        "status": "deployed"
+      },
+      "api-guardian": {
+        "deployment_memory_id": "mock_api-guardian_deployment-info",
+        "config": {
+          "role": "integration-specialist",
+          "specialization": "API reliability and security",
+          "target_files": [
+            "src/twitter_monitor.py",
+            "src/email_notifier.py",
+            "src/health_endpoint.py"
+          ],
+          "focus_areas": [
+            "api-reliability",
+            "rate-limit-management",
+            "error-recovery",
+            "security-compliance"
+          ],
+          "analysis_depth": "security-focused"
+        },
+        "status": "deployed"
+      },
+      "performance-optimizer": {
+        "deployment_memory_id": "mock_performance-optimizer_deployment-info",
+        "config": {
+          "role": "performance-engineer",
+          "specialization": "Performance and scalability optimization",
+          "target_files": [
+            "src/main.py",
+            "src/main_optimized.py",
+            "test_optimized_system.py"
+          ],
+          "focus_areas": [
+            "memory-optimization",
+            "cpu-efficiency",
+            "scalability-analysis",
+            "bottleneck-identification"
+          ],
+          "analysis_depth": "performance-critical"
+        },
+        "status": "deployed"
+      },
+      "production-auditor": {
+        "deployment_memory_id": "mock_production-auditor_deployment-info",
+        "config": {
+          "role": "devops-specialist",
+          "specialization": "Production readiness and deployment",
+          "target_files": [
+            "docker/",
+            "*.sh",
+            "cloudformation-template.yaml",
+            "terraform/"
+          ],
+          "focus_areas": [
+            "production-readiness",
+            "deployment-reliability",
+            "monitoring-coverage",
+            "operational-excellence"
+          ],
+          "analysis_depth": "production-grade"
+        },
+        "status": "deployed"
+      },
+      "data-quality-sentinel": {
+        "deployment_memory_id": "mock_data-quality-sentinel_deployment-info",
+        "config": {
+          "role": "quality-assurance",
+          "specialization": "Data validation and integrity",
+          "target_files": [
+            "src/utils.py",
+            "src/news_scraper.py",
+            "src/email_notifier.py"
+          ],
+          "focus_areas": [
+            "data-validation",
+            "sanitization-coverage",
+            "deduplication-effectiveness",
+            "integrity-checks"
+          ],
+          "analysis_depth": "data-centric"
+        },
+        "status": "deployed"
+      },
+      "monitoring-architect": {
+        "deployment_memory_id": "mock_monitoring-architect_deployment-info",
+        "config": {
+          "role": "observability-engineer",
+          "specialization": "Monitoring and observability",
+          "target_files": [
+            "src/health_endpoint.py",
+            "docker/prometheus.yml",
+            "docs/production/"
+          ],
+          "focus_areas": [
+            "metrics-collection",
+            "alerting-effectiveness",
+            "health-monitoring",
+            "debugging-capabilities"
+          ],
+          "analysis_depth": "observability-focused"
+        },
+        "status": "deployed"
+      }
+    },
+    "tasks_completed": [
+      {
+        "agent_id": "scraping-specialist",
+        "completion_time": "2025-10-05T00:14:00.568370",
+        "findings_count": 2
+      },
+      {
+        "agent_id": "keyword-analyzer",
+        "completion_time": "2025-10-05T00:14:00.568455",
+        "findings_count": 2
+      },
+      {
+        "agent_id": "api-guardian",
+        "completion_time": "2025-10-05T00:14:00.568523",
+        "findings_count": 2
+      },
+      {
+        "agent_id": "performance-optimizer",
+        "completion_time": "2025-10-05T00:14:00.568586",
+        "findings_count": 2
+      },
+      {
+        "agent_id": "production-auditor",
+        "completion_time": "2025-10-05T00:14:00.568648",
+        "findings_count": 0
+      },
+      {
+        "agent_id": "data-quality-sentinel",
+        "completion_time": "2025-10-05T00:14:00.568708",
+        "findings_count": 0
+      },
+      {
+        "agent_id": "monitoring-architect",
+        "completion_time": "2025-10-05T00:14:00.568768",
+        "findings_count": 0
+      }
+    ],
+    "synthesis_results": {
+      "synthesis_id": null,
+      "total_memories": 0,
+      "key_patterns": [],
+      "priority_areas": []
+    },
+    "memory_initialized": true,
+    "context_id": "mock_system-init_project-context"
+  },
+  "agents_summary": {
+    "scraping-specialist": {
+      "role": "code-analyzer",
+      "specialization": "Web scraping and data collection optimization",
+      "files_analyzed": 5,
+      "focus_areas": [
+        "rate-limiting-compliance",
+        "scraping-efficiency",
+        "error-handling-robustness",
+        "concurrent-processing"
+      ]
+    },
+    "keyword-analyzer": {
+      "role": "algorithm-optimizer",
+      "specialization": "Keyword matching and semantic analysis",
+      "files_analyzed": 4,
+      "focus_areas": [
+        "keyword-matching-accuracy",
+        "false-positive-reduction",
+        "company-name-disambiguation",
+        "semantic-analysis"
+      ]
+    },
+    "api-guardian": {
+      "role": "integration-specialist",
+      "specialization": "API reliability and security",
+      "files_analyzed": 3,
+      "focus_areas": [
+        "api-reliability",
+        "rate-limit-management",
+        "error-recovery",
+        "security-compliance"
+      ]
+    },
+    "performance-optimizer": {
+      "role": "performance-engineer",
+      "specialization": "Performance and scalability optimization",
+      "files_analyzed": 3,
+      "focus_areas": [
+        "memory-optimization",
+        "cpu-efficiency",
+        "scalability-analysis",
+        "bottleneck-identification"
+      ]
+    },
+    "production-auditor": {
+      "role": "devops-specialist",
+      "specialization": "Production readiness and deployment",
+      "files_analyzed": 4,
+      "focus_areas": [
+        "production-readiness",
+        "deployment-reliability",
+        "monitoring-coverage",
+        "operational-excellence"
+      ]
+    },
+    "data-quality-sentinel": {
+      "role": "quality-assurance",
+      "specialization": "Data validation and integrity",
+      "files_analyzed": 3,
+      "focus_areas": [
+        "data-validation",
+        "sanitization-coverage",
+        "deduplication-effectiveness",
+        "integrity-checks"
+      ]
+    },
+    "monitoring-architect": {
+      "role": "observability-engineer",
+      "specialization": "Monitoring and observability",
+      "files_analyzed": 3,
+      "focus_areas": [
+        "metrics-collection",
+        "alerting-effectiveness",
+        "health-monitoring",
+        "debugging-capabilities"
+      ]
+    }
+  },
+  "coordinator_status": {
+    "status": "mock"
+  },
+  "timestamp": "2025-10-05T00:14:00.570751"
+}

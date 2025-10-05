@@ -1,0 +1,263 @@
+{
+  "timestamp": "2025-10-05T22:48:59.080108+00:00",
+  "system_info": {
+    "cpu_count": 4,
+    "memory_total_gb": 8.0,
+    "python_version": "3.10.11 (v3.10.11:7d4cc5aa85, Apr  4 2023, 19:05:19) [Clang 13.0.0 (clang-1300.0.29.30)]",
+    "platform": "darwin"
+  },
+  "database_stats": {
+    "total_companies": 0,
+    "total_alerts": 50,
+    "total_feeds": 0,
+    "active_feeds": 0,
+    "alerts_last_24h": 50,
+    "alerts_last_7d": 50,
+    "avg_confidence": 0.7999999999999997,
+    "alerts_by_source": {
+      "benchmark": 50
+    },
+    "alerts_by_company": {}
+  },
+  "test_results": {
+    "timestamp": "2025-10-05T22:48:51.834146+00:00",
+    "tests": {
+      "database": {
+        "status": "passed",
+        "companies_count": 0,
+        "alerts_count": 0,
+        "stats": {
+          "total_companies": 0,
+          "total_alerts": 0,
+          "total_feeds": 0,
+          "active_feeds": 0,
+          "alerts_last_24h": 0,
+          "alerts_last_7d": 0,
+          "avg_confidence": 0.0,
+          "alerts_by_source": {},
+          "alerts_by_company": {}
+        }
+      },
+      "content_analysis": {
+        "status": "skipped",
+        "reason": "Enhanced content analysis not available: attempted relative import with no known parent pac...",
+        "basic_test": "Basic keyword matching working"
+      },
+      "rate_limiting": {
+        "status": "passed",
+        "requests_tested": 10,
+        "allowed_requests": 10,
+        "rate_limit_working": true
+      },
+      "websocket": {
+        "status": "passed",
+        "active_connections": 0,
+        "total_connections": 0,
+        "stats": {
+          "total_connections": 0,
+          "active_connections": 0,
+          "authenticated_connections": 0,
+          "messages_sent": 0,
+          "alerts_broadcast": 0,
+          "rooms": {},
+          "subscriptions": {}
+        }
+      }
+    }
+  },
+  "benchmark_results": {
+    "timestamp": "2025-10-05T22:48:59.052958+00:00",
+    "system_info": {
+      "cpu_count": 4,
+      "memory_total": 8.0,
+      "python_version": "False.False"
+    },
+    "benchmark_results": {
+      "database_operations": {
+        "test_name": "database_operations",
+        "total_operations": 200,
+        "successful_operations": 199,
+        "failed_operations": 1,
+        "total_duration": 0.5629127025604248,
+        "average_duration": 0.002828707048042336,
+        "min_duration": 0.001489877700805664,
+        "max_duration": 0.013948917388916016,
+        "percentile_95": 0.0060520172119140625,
+        "percentile_99": 0.011924028396606445,
+        "throughput": 353.51840364383804,
+        "memory_peak": 0,
+        "memory_average": 0,
+        "cpu_average": 0,
+        "error_rate": 0.005,
+        "errors": [
+          "list index out of range"
+        ]
+      },
+      "content_analysis": {
+        "test_name": "content_analysis",
+        "total_operations": 0,
+        "successful_operations": 0,
+        "failed_operations": 1,
+        "total_duration": 0,
+        "average_duration": 0,
+        "min_duration": 0,
+        "max_duration": 0,
+        "percentile_95": 0,
+        "percentile_99": 0,
+        "throughput": 0,
+        "memory_peak": 0,
+        "memory_average": 0,
+        "cpu_average": 0,
+        "error_rate": 1.0,
+        "errors": [
+          "attempted relative import with no known parent package"
+        ]
+      },
+      "api_endpoints": {
+        "test_name": "api_endpoints",
+        "total_operations": 0,
+        "successful_operations": 0,
+        "failed_operations": 1,
+        "total_duration": 0,
+        "average_duration": 0,
+        "min_duration": 0,
+        "max_duration": 0,
+        "percentile_95": 0,
+        "percentile_99": 0,
+        "throughput": 0,
+        "memory_peak": 0,
+        "memory_average": 0,
+        "cpu_average": 0,
+        "error_rate": 1.0,
+        "errors": [
+          "No module named 'httpx'"
+        ]
+      },
+      "websocket_performance": {
+        "test_name": "websocket_performance",
+        "total_operations": 100,
+        "successful_operations": 100,
+        "failed_operations": 0,
+        "total_duration": 0.14330220222473145,
+        "average_duration": 0.0014330220222473144,
+        "min_duration": 0.0012333393096923828,
+        "max_duration": 0.003802776336669922,
+        "percentile_95": 0.0015261173248291016,
+        "percentile_99": 0.003802776336669922,
+        "throughput": 697.8259820681371,
+        "memory_peak": 0,
+        "memory_average": 0,
+        "cpu_average": 0,
+        "error_rate": 0.0,
+        "errors": []
+      },
+      "concurrent_processing": {
+        "test_name": "concurrent_processing",
+        "total_operations": 86,
+        "successful_operations": 86,
+        "failed_operations": 0,
+        "total_duration": 3.8826348781585693,
+        "average_duration": 0.045146917187890344,
+        "min_duration": 0.0014030933380126953,
+        "max_duration": 0.1081838607788086,
+        "percentile_95": 0.10013413429260254,
+        "percentile_99": 0.1081838607788086,
+        "throughput": 22.149906622377923,
+        "memory_peak": 0,
+        "memory_average": 0,
+        "cpu_average": 0,
+        "error_rate": 0.0,
+        "errors": []
+      },
+      "memory_efficiency": {
+        "test_name": "memory_efficiency",
+        "total_operations": 50,
+        "successful_operations": 50,
+        "failed_operations": 0,
+        "total_duration": 3.466350793838501,
+        "average_duration": 0.06932701587677002,
+        "min_duration": 0.05109405517578125,
+        "max_duration": 0.12967777252197266,
+        "percentile_95": 0.10996508598327637,
+        "percentile_99": 0.12967777252197266,
+        "throughput": 14.424391232669201,
+        "memory_peak": 0,
+        "memory_average": 0,
+        "cpu_average": 0,
+        "error_rate": 0.0,
+        "errors": []
+      },
+      "rate_limiting": {
+        "test_name": "rate_limiting",
+        "total_operations": 200,
+        "successful_operations": 200,
+        "failed_operations": 0,
+        "total_duration": 0.18242669105529785,
+        "average_duration": 0.0009121334552764892,
+        "min_duration": 0.000438690185546875,
+        "max_duration": 0.06314516067504883,
+        "percentile_95": 0.0008838176727294922,
+        "percentile_99": 0.0022652149200439453,
+        "throughput": 1096.330799199637,
+        "memory_peak": 0,
+        "memory_average": 0,
+        "cpu_average": 0,
+        "error_rate": 0.0,
+        "errors": []
+      }
+    },
+    "overall_metrics": {
+      "total_operations": 636,
+      "successful_operations": 636,
+      "success_rate": 1.0,
+      "duration": {
+        "average": 0.012953157694834584,
+        "median": 0.0016859769821166992,
+        "min": 0.000438690185546875,
+        "max": 0.12967777252197266,
+        "std_dev": 0.025168468910028212,
+        "p95": 0.07053208351135254,
+        "p99": 0.10411310195922852
+      },
+      "memory": {
+        "average": 0.008039750393081762,
+        "peak": 0.140625,
+        "min": -0.0078125
+      },
+      "cpu": {
+        "average": 1.4800314465408806,
+        "peak": 100.0
+      }
+    },
+    "recommendations": [
+      "High error rate in content_analysis (100.0%). Investigation needed.",
+      "High error rate in api_endpoints (100.0%). Investigation needed."
+    ]
+  },
+  "components": {
+    "database": "PostgreSQL with SQLAlchemy ORM",
+    "cache": "Redis for distributed caching",
+    "api": "FastAPI with authentication and rate limiting",
+    "websockets": "Real-time alerts with subscription management",
+    "monitoring": "Performance benchmarks and system metrics",
+    "testing": "Comprehensive test suite with coverage"
+  },
+  "features": [
+    "Real-time TGE alert detection",
+    "Multi-source monitoring (Twitter, RSS feeds)",
+    "Advanced content analysis with confidence scoring",
+    "RESTful API with JWT authentication",
+    "WebSocket real-time notifications",
+    "Rate limiting and API compliance",
+    "Performance monitoring and benchmarking",
+    "Database integration with PostgreSQL",
+    "Distributed caching with Redis",
+    "Comprehensive test coverage",
+    "Production-ready deployment"
+  ],
+  "urls": {
+    "api_docs": "http://localhost:8000/docs",
+    "health_check": "http://localhost:8000/health",
+    "websocket": "ws://localhost:8000/ws"
+  }
+}

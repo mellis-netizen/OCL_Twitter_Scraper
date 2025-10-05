@@ -1,0 +1,166 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: tge-postgres
+    environment:
+      POSTGRES_DB: tge_monitor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - tge-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: tge-redis
+    command: redis-server --appendonly yes --requirepass redis_password
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - tge-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Enhanced TGE Monitor API
+  tge-api:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.enhanced
+    container_name: tge-api
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/tge_monitor
+      - REDIS_URL=redis://:redis_password@redis:6379/0
+      - SECRET_KEY=your-production-secret-key-change-this
+      - API_PORT=8000
+      - LOG_LEVEL=INFO
+      - ADMIN_USERNAME=admin
+      - ADMIN_EMAIL=admin@tgemonitor.local
+      - ADMIN_PASSWORD=admin123456
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./state:/app/state
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tge-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Enhanced TGE Monitor Worker
+  tge-worker:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.enhanced
+    container_name: tge-worker
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/tge_monitor
+      - REDIS_URL=redis://:redis_password@redis:6379/0
+      - SECRET_KEY=your-production-secret-key-change-this
+      - LOG_LEVEL=INFO
+      - WORKER_MODE=true
+    volumes:
+      - ./logs:/app/logs
+      - ./state:/app/state
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tge-network
+    restart: unless-stopped
+    command: ["python", "-m", "src.main_optimized_db", "--mode", "continuous"]
+
+  # NGINX Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: tge-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/ssl:/etc/nginx/ssl
+    depends_on:
+      - tge-api
+    networks:
+      - tge-network
+    restart: unless-stopped
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tge-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - tge-network
+    restart: unless-stopped
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tge-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - tge-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  tge-network:
+    driver: bridge

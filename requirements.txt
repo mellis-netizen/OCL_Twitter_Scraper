@@ -9,13 +9,26 @@ python-dateutil==2.9.0.post0
 urllib3==2.5.0
 requests-oauthlib==2.0.0
 
+# API and Database dependencies
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+sqlalchemy==2.0.23
+alembic==1.13.0
+psycopg2-binary==2.9.9
+redis==5.0.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+websockets==12.0
+
 # Optional dependencies (not required for core functionality)
-# beautifulsoup4==4.12.2
+beautifulsoup4==4.12.2
 # selenium==4.15.2
 # pytz==2023.3
-# lxml==4.9.3
-# newspaper3k==0.2.8
-# nltk==3.8.1
+lxml==4.9.3
+newspaper3k==0.2.8
+nltk==3.8.1
 # textblob==0.17.1
-# pandas==2.1.3
+pandas==2.1.3
 # webdriver-manager==4.0.1
