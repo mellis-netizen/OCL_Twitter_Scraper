@@ -1,0 +1,3 @@
+# This is a placeholder for the Lambda deployment package
+# The actual ZIP file would be created during deployment
+# containing the cost-optimizer.py script and dependencies

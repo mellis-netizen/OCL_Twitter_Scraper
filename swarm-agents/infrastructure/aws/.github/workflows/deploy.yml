@@ -1,0 +1,351 @@
+# TGE Swarm AWS Deployment Pipeline
+# GitHub Actions workflow for automated infrastructure deployment
+
+name: Deploy TGE Swarm to AWS
+
+on:
+  push:
+    branches: [main]
+    paths: ['infrastructure/aws/**']
+  pull_request:
+    branches: [main]
+    paths: ['infrastructure/aws/**']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      action:
+        description: 'Terraform action'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+env:
+  TF_VERSION: '1.6.0'
+  AWS_REGION: 'us-west-2'
+  TF_VAR_environment: ${{ github.event.inputs.environment || 'staging' }}
+
+jobs:
+  terraform-check:
+    name: Terraform Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        working-directory: infrastructure/aws
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        working-directory: infrastructure/aws
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        working-directory: infrastructure/aws
+        run: terraform validate
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'infrastructure/aws'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [terraform-check, security-scan]
+    if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Create terraform.tfvars
+        working-directory: infrastructure/aws
+        run: |
+          cat > terraform.tfvars << EOF
+          aws_region = "${{ env.AWS_REGION }}"
+          environment = "${{ env.TF_VAR_environment }}"
+          key_pair_name = "${{ secrets.AWS_KEY_PAIR_NAME }}"
+          allowed_cidr_blocks = ["${{ secrets.ALLOWED_CIDR_BLOCKS }}"]
+          domain_name = "${{ secrets.DOMAIN_NAME }}"
+          certificate_arn = "${{ secrets.CERTIFICATE_ARN }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: infrastructure/aws
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.TF_VAR_environment }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_STATE_LOCK_TABLE }}"
+
+      - name: Terraform Plan
+        working-directory: infrastructure/aws
+        run: terraform plan -out=tfplan
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan-${{ env.TF_VAR_environment }}
+          path: infrastructure/aws/tfplan
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            
+            // Get terraform plan output
+            const planOutput = execSync('cd infrastructure/aws && terraform show -no-color tfplan').toString();
+            
+            const comment = `## Terraform Plan for ${{ env.TF_VAR_environment }}
+
+            \`\`\`
+            ${planOutput}
+            \`\`\`
+
+            Plan generated for commit: ${{ github.sha }}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: [terraform-plan]
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      github.event.inputs.action == 'apply'
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Create terraform.tfvars
+        working-directory: infrastructure/aws
+        run: |
+          cat > terraform.tfvars << EOF
+          aws_region = "${{ env.AWS_REGION }}"
+          environment = "${{ env.TF_VAR_environment }}"
+          key_pair_name = "${{ secrets.AWS_KEY_PAIR_NAME }}"
+          allowed_cidr_blocks = ["${{ secrets.ALLOWED_CIDR_BLOCKS }}"]
+          domain_name = "${{ secrets.DOMAIN_NAME }}"
+          certificate_arn = "${{ secrets.CERTIFICATE_ARN }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: infrastructure/aws
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.TF_VAR_environment }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_STATE_LOCK_TABLE }}"
+
+      - name: Download Plan
+        if: github.event.inputs.action == 'apply'
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan-${{ env.TF_VAR_environment }}
+          path: infrastructure/aws/
+
+      - name: Terraform Apply
+        working-directory: infrastructure/aws
+        run: |
+          if [ -f tfplan ]; then
+            terraform apply tfplan
+          else
+            terraform apply -auto-approve
+          fi
+
+      - name: Output Infrastructure Info
+        working-directory: infrastructure/aws
+        run: |
+          echo "## Deployment Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Connection Information" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          terraform output connection_info >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Deployment
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const lbDns = execSync('cd infrastructure/aws && terraform output -raw load_balancer_dns_name').toString().trim();
+            
+            github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: '${{ env.TF_VAR_environment }}',
+              description: 'TGE Swarm deployment to AWS',
+              auto_merge: false
+            }).then(deployment => {
+              github.rest.repos.createDeploymentStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                deployment_id: deployment.data.id,
+                state: 'success',
+                environment_url: `https://${lbDns}`,
+                description: 'Deployment successful'
+              });
+            });
+
+  terraform-destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'destroy'
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Create terraform.tfvars
+        working-directory: infrastructure/aws
+        run: |
+          cat > terraform.tfvars << EOF
+          aws_region = "${{ env.AWS_REGION }}"
+          environment = "${{ env.TF_VAR_environment }}"
+          key_pair_name = "${{ secrets.AWS_KEY_PAIR_NAME }}"
+          allowed_cidr_blocks = ["${{ secrets.ALLOWED_CIDR_BLOCKS }}"]
+          EOF
+
+      - name: Terraform Init
+        working-directory: infrastructure/aws
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.TF_VAR_environment }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_STATE_LOCK_TABLE }}"
+
+      - name: Terraform Destroy
+        working-directory: infrastructure/aws
+        run: terraform destroy -auto-approve
+
+  drift-detection:
+    name: Drift Detection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    environment: production
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: infrastructure/aws
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=production/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_STATE_LOCK_TABLE }}"
+
+      - name: Terraform Plan (Drift Check)
+        working-directory: infrastructure/aws
+        run: |
+          if ! terraform plan -detailed-exitcode; then
+            echo "Infrastructure drift detected!" >> $GITHUB_STEP_SUMMARY
+            terraform plan >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No infrastructure drift detected." >> $GITHUB_STEP_SUMMARY
+          fi

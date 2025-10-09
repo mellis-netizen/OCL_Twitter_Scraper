@@ -1,0 +1,114 @@
+# TGE Swarm AWS Infrastructure Configuration
+# Copy this file to terraform.tfvars and customize for your environment
+
+# Basic Configuration
+aws_region = "us-west-2"
+environment = "production"
+project_name = "tge-swarm"
+
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+public_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+private_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
+database_subnet_cidrs = ["10.0.21.0/24", "10.0.22.0/24", "10.0.23.0/24"]
+
+# EC2 Configuration
+key_pair_name = "tge-swarm-keypair"  # Create this in AWS EC2 console first
+
+# Instance Types (adjust based on your performance and cost requirements)
+instance_types = {
+  queen        = "t3.large"    # Swarm Queen Orchestrator
+  coordinator  = "t3.medium"   # Memory Coordinator
+  agent        = "t3.small"    # Individual Swarm Agents
+  database     = "t3.medium"   # Database instances (not used with RDS)
+  cache        = "t3.small"    # Cache instances (not used with ElastiCache)
+  monitoring   = "t3.medium"   # Monitoring stack
+  load_balancer = "t3.small"   # Load balancer instances (not used with ALB)
+}
+
+# Auto Scaling Configuration
+swarm_agent_config = {
+  min_size         = 2
+  max_size         = 10
+  desired_capacity = 5
+  health_check_grace_period = 300
+  health_check_type = "ELB"
+}
+
+# Database Configuration
+postgres_config = {
+  engine_version    = "15.4"
+  instance_class    = "db.t3.medium"
+  allocated_storage = 100
+  max_allocated_storage = 1000
+  backup_retention_period = 7
+  backup_window     = "03:00-04:00"
+  maintenance_window = "sun:04:00-sun:05:00"
+  multi_az          = true
+  deletion_protection = true
+}
+
+# Redis Configuration
+redis_config = {
+  node_type                = "cache.t3.micro"
+  num_cache_clusters       = 3
+  parameter_group_name     = "default.redis7.cluster.on"
+  port                     = 6379
+  engine_version           = "7.0"
+  automatic_failover_enabled = true
+  multi_az_enabled         = true
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+}
+
+# Load Balancer Configuration
+alb_config = {
+  enable_deletion_protection = true
+  idle_timeout              = 60
+  enable_http2              = true
+  enable_cross_zone_load_balancing = true
+}
+
+# Monitoring Configuration
+cloudwatch_config = {
+  log_retention_days    = 30
+  detailed_monitoring   = true
+  enable_insights       = true
+  dashboard_enabled     = true
+}
+
+# Security Configuration
+allowed_cidr_blocks = ["0.0.0.0/0"]  # CHANGE THIS! Restrict to your IP ranges
+enable_flow_logs = true
+enable_cloudtrail = true
+
+# Backup Configuration
+backup_config = {
+  backup_vault_name = "tge-swarm-backup-vault"
+  backup_schedule   = "cron(0 2 * * ? *)"  # Daily at 2 AM UTC
+  retention_days    = 30
+  copy_to_destination = true
+  destination_region = "us-east-1"
+}
+
+# Cost Optimization
+enable_spot_instances = false  # Set to true for non-production environments
+spot_instance_types = ["t3.small", "t3.medium", "m5.large"]
+
+# SSL/Domain Configuration (optional)
+# domain_name = "tge-swarm.yourdomain.com"
+# hosted_zone_id = "Z1234567890"
+# certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+
+# Feature Flags
+enable_multi_region = false
+enable_container_insights = true
+enable_prometheus_monitoring = true
+
+# Additional Tags
+additional_tags = {
+  Owner = "TGE-Team"
+  CostCenter = "Engineering"
+  Project = "TGE-Swarm"
+  Backup = "Required"
+}

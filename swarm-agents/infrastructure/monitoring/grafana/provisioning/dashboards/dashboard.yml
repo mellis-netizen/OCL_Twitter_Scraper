@@ -1,0 +1,15 @@
+# Grafana Dashboard Provisioning for TGE Swarm
+# Automatically provision dashboards for comprehensive monitoring
+
+apiVersion: 1
+
+providers:
+  - name: 'TGE Swarm Dashboards'
+    orgId: 1
+    folder: 'TGE Swarm'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

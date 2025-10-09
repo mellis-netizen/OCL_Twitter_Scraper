@@ -1,0 +1,15 @@
+# TGE Swarm Backup Crontab
+# Cost-optimized backup schedule
+# Runs daily at 2 AM with short retention
+
+# Daily backup at 2 AM
+0 2 * * * /app/scripts/backup-local.sh >> /app/logs/backup-cron.log 2>&1
+
+# Weekly cleanup of old logs at 3 AM on Sundays
+0 3 * * 0 /app/scripts/cleanup-old-backups.sh >> /app/logs/cleanup-cron.log 2>&1
+
+# Health check every 6 hours
+0 */6 * * * /app/scripts/health-check-backup.sh >> /app/logs/health-cron.log 2>&1
+
+# Sync to S3 (if enabled) at 4 AM daily
+0 4 * * * [ "$ENABLE_S3_SYNC" = "true" ] && /app/scripts/backup-s3-sync.sh >> /app/logs/s3-sync-cron.log 2>&1

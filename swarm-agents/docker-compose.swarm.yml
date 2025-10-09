@@ -1,0 +1,713 @@
+version: '3.8'
+
+# TGE Swarm Orchestration System - Production Configuration
+# Infrastructure Architect: Claude
+# Purpose: Scalable, fault-tolerant swarm deployment with monitoring
+
+services:
+  # =========================================================================
+  # CORE INFRASTRUCTURE LAYER
+  # =========================================================================
+  
+  # PostgreSQL Cluster Primary
+  postgres-primary:
+    image: postgres:15-alpine
+    container_name: tge-postgres-primary
+    environment:
+      POSTGRES_DB: tge_swarm
+      POSTGRES_USER: swarm_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-swarm_secure_pass}
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-repl_secure_pass}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --data-checksums"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d
+      - ./infrastructure/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+    ports:
+      - "5432:5432"
+    networks:
+      - swarm-internal
+      - swarm-db
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swarm_user -d tge_swarm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # Redis Cluster - Master Nodes
+  redis-master-1:
+    image: redis:7-alpine
+    container_name: tge-redis-master-1
+    command: >
+      redis-server 
+      --port 7001
+      --cluster-enabled yes
+      --cluster-config-file nodes-7001.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-redis_secure_pass}
+      --masterauth ${REDIS_PASSWORD:-redis_secure_pass}
+      --maxmemory 512m
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_master_1_data:/data
+    ports:
+      - "7001:7001"
+      - "17001:17001"
+    networks:
+      - swarm-internal
+      - swarm-cache
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7001", "-a", "${REDIS_PASSWORD:-redis_secure_pass}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis-master-2:
+    image: redis:7-alpine
+    container_name: tge-redis-master-2
+    command: >
+      redis-server 
+      --port 7002
+      --cluster-enabled yes
+      --cluster-config-file nodes-7002.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-redis_secure_pass}
+      --masterauth ${REDIS_PASSWORD:-redis_secure_pass}
+      --maxmemory 512m
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_master_2_data:/data
+    ports:
+      - "7002:7002"
+      - "17002:17002"
+    networks:
+      - swarm-internal
+      - swarm-cache
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7002", "-a", "${REDIS_PASSWORD:-redis_secure_pass}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis-master-3:
+    image: redis:7-alpine
+    container_name: tge-redis-master-3
+    command: >
+      redis-server 
+      --port 7003
+      --cluster-enabled yes
+      --cluster-config-file nodes-7003.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-redis_secure_pass}
+      --masterauth ${REDIS_PASSWORD:-redis_secure_pass}
+      --maxmemory 512m
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_master_3_data:/data
+    ports:
+      - "7003:7003"
+      - "17003:17003"
+    networks:
+      - swarm-internal
+      - swarm-cache
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7003", "-a", "${REDIS_PASSWORD:-redis_secure_pass}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cluster Initialization
+  redis-cluster-init:
+    image: redis:7-alpine
+    container_name: tge-redis-cluster-init
+    depends_on:
+      redis-master-1:
+        condition: service_healthy
+      redis-master-2:
+        condition: service_healthy
+      redis-master-3:
+        condition: service_healthy
+    networks:
+      - swarm-internal
+      - swarm-cache
+    command: >
+      sh -c "
+        sleep 10 &&
+        redis-cli --cluster create 
+        redis-master-1:7001 
+        redis-master-2:7002 
+        redis-master-3:7003 
+        --cluster-replicas 0 
+        --cluster-yes
+      "
+    restart: "no"
+
+  # =========================================================================
+  # SWARM ORCHESTRATION LAYER
+  # =========================================================================
+
+  # Swarm Queen Orchestrator
+  swarm-queen:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.swarm-queen
+    container_name: tge-swarm-queen
+    environment:
+      - SWARM_MODE=queen
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - REDIS_CLUSTER_URLS=redis-master-1:7001,redis-master-2:7002,redis-master-3:7003
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass}
+      - SAFLA_MEMORY_PATH=/app/safla-memory
+      - SWARM_CONFIG_PATH=/app/config/safla-swarm-config.yaml
+      - LOG_LEVEL=INFO
+      - METRICS_PORT=8001
+      - QUEEN_API_PORT=8080
+    volumes:
+      - ./safla-memory:/app/safla-memory
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ../src:/app/src:ro
+      - ../config.py:/app/config.py:ro
+    ports:
+      - "8080:8080"  # Queen API
+      - "8001:8001"  # Metrics
+    networks:
+      - swarm-internal
+      - swarm-agents
+      - swarm-monitoring
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis-cluster-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+
+  # Swarm Memory Coordinator
+  swarm-memory-coordinator:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.memory-coordinator
+    container_name: tge-memory-coordinator
+    environment:
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - REDIS_CLUSTER_URLS=redis-master-1:7001,redis-master-2:7002,redis-master-3:7003
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass}
+      - MEMORY_PATH=/app/safla-memory
+      - SYNC_INTERVAL=90
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./safla-memory:/app/safla-memory
+      - ./logs:/app/logs
+    networks:
+      - swarm-internal
+      - swarm-agents
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis-cluster-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8002/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # =========================================================================
+  # SWARM WORKER AGENTS
+  # =========================================================================
+
+  # Scraping Efficiency Specialist
+  agent-scraping-efficiency:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.swarm-agent
+    container_name: tge-agent-scraping-efficiency
+    environment:
+      - AGENT_TYPE=scraping-efficiency-specialist
+      - AGENT_ID=scraping-efficiency-001
+      - QUEEN_URL=http://swarm-queen:8080
+      - MEMORY_COORDINATOR_URL=http://swarm-memory-coordinator:8002
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - REDIS_CLUSTER_URLS=redis-master-1:7001,redis-master-2:7002,redis-master-3:7003
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass}
+      - LOG_LEVEL=INFO
+      - METRICS_PORT=8010
+    volumes:
+      - ../src:/app/src:ro
+      - ../config.py:/app/config.py:ro
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+    networks:
+      - swarm-internal
+      - swarm-agents
+    depends_on:
+      swarm-queen:
+        condition: service_healthy
+      swarm-memory-coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+
+  # TGE Keyword Precision Specialist
+  agent-keyword-precision:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.swarm-agent
+    container_name: tge-agent-keyword-precision
+    environment:
+      - AGENT_TYPE=tge-keyword-precision-specialist
+      - AGENT_ID=keyword-precision-001
+      - QUEEN_URL=http://swarm-queen:8080
+      - MEMORY_COORDINATOR_URL=http://swarm-memory-coordinator:8002
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - REDIS_CLUSTER_URLS=redis-master-1:7001,redis-master-2:7002,redis-master-3:7003
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass}
+      - LOG_LEVEL=INFO
+      - METRICS_PORT=8011
+    volumes:
+      - ../src:/app/src:ro
+      - ../config.py:/app/config.py:ro
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+    networks:
+      - swarm-internal
+      - swarm-agents
+    depends_on:
+      swarm-queen:
+        condition: service_healthy
+      swarm-memory-coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+
+  # API Reliability Optimizer
+  agent-api-reliability:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.swarm-agent
+    container_name: tge-agent-api-reliability
+    environment:
+      - AGENT_TYPE=api-reliability-optimizer
+      - AGENT_ID=api-reliability-001
+      - QUEEN_URL=http://swarm-queen:8080
+      - MEMORY_COORDINATOR_URL=http://swarm-memory-coordinator:8002
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - REDIS_CLUSTER_URLS=redis-master-1:7001,redis-master-2:7002,redis-master-3:7003
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass}
+      - LOG_LEVEL=INFO
+      - METRICS_PORT=8012
+    volumes:
+      - ../src:/app/src:ro
+      - ../config.py:/app/config.py:ro
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+    networks:
+      - swarm-internal
+      - swarm-agents
+    depends_on:
+      swarm-queen:
+        condition: service_healthy
+      - swarm-memory-coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+
+  # Performance Bottleneck Eliminator
+  agent-performance:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.swarm-agent
+    container_name: tge-agent-performance
+    environment:
+      - AGENT_TYPE=performance-bottleneck-eliminator
+      - AGENT_ID=performance-001
+      - QUEEN_URL=http://swarm-queen:8080
+      - MEMORY_COORDINATOR_URL=http://swarm-memory-coordinator:8002
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - REDIS_CLUSTER_URLS=redis-master-1:7001,redis-master-2:7002,redis-master-3:7003
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass}
+      - LOG_LEVEL=INFO
+      - METRICS_PORT=8013
+    volumes:
+      - ../src:/app/src:ro
+      - ../config.py:/app/config.py:ro
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+    networks:
+      - swarm-internal
+      - swarm-agents
+    depends_on:
+      swarm-queen:
+        condition: service_healthy
+      swarm-memory-coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+
+  # Data Quality Enforcer
+  agent-data-quality:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.swarm-agent
+    container_name: tge-agent-data-quality
+    environment:
+      - AGENT_TYPE=data-quality-enforcer
+      - AGENT_ID=data-quality-001
+      - QUEEN_URL=http://swarm-queen:8080
+      - MEMORY_COORDINATOR_URL=http://swarm-memory-coordinator:8002
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - REDIS_CLUSTER_URLS=redis-master-1:7001,redis-master-2:7002,redis-master-3:7003
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass}
+      - LOG_LEVEL=INFO
+      - METRICS_PORT=8014
+    volumes:
+      - ../src:/app/src:ro
+      - ../config.py:/app/config.py:ro
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+    networks:
+      - swarm-internal
+      - swarm-agents
+    depends_on:
+      swarm-queen:
+        condition: service_healthy
+      swarm-memory-coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+
+  # =========================================================================
+  # SERVICE DISCOVERY LAYER
+  # =========================================================================
+
+  # Consul Service Discovery
+  consul:
+    image: consul:latest
+    container_name: tge-consul
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+    command: >
+      consul agent -server -bootstrap -ui -client=0.0.0.0
+      -bind='{{ GetInterfaceIP "eth0" }}'
+      -data-dir=/consul/data
+    volumes:
+      - consul_data:/consul/data
+      - ./infrastructure/consul/config:/consul/config
+    ports:
+      - "8500:8500"  # HTTP API
+      - "8600:8600/udp"  # DNS
+    networks:
+      - swarm-internal
+      - swarm-discovery
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Service Registry Agent
+  service-registry:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.service-registry
+    container_name: tge-service-registry
+    environment:
+      - CONSUL_URL=http://consul:8500
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - REGISTRY_PORT=8020
+      - LOG_LEVEL=INFO
+    ports:
+      - "8020:8020"
+    networks:
+      - swarm-internal
+      - swarm-discovery
+    depends_on:
+      consul:
+        condition: service_healthy
+      postgres-primary:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # =========================================================================
+  # MONITORING & OBSERVABILITY LAYER
+  # =========================================================================
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tge-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.size=10GB'
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./infrastructure/monitoring/prometheus/rules:/etc/prometheus/rules
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - swarm-internal
+      - swarm-monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tge-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=redis-datasource,prometheus-plugin
+      - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    networks:
+      - swarm-internal
+      - swarm-monitoring
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AlertManager
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: tge-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    volumes:
+      - ./infrastructure/monitoring/alertmanager/config.yml:/etc/alertmanager/config.yml
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - swarm-internal
+      - swarm-monitoring
+    restart: unless-stopped
+
+  # Jaeger Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: tge-jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - "16686:16686"  # UI
+      - "14268:14268"  # HTTP collector
+      - "14250:14250"  # gRPC collector
+      - "9411:9411"    # Zipkin
+    networks:
+      - swarm-internal
+      - swarm-monitoring
+    restart: unless-stopped
+
+  # =========================================================================
+  # LOAD BALANCING & PROXY LAYER
+  # =========================================================================
+
+  # HAProxy Load Balancer
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: tge-haproxy
+    volumes:
+      - ./infrastructure/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+      - ./infrastructure/haproxy/ssl:/etc/ssl/certs
+    ports:
+      - "80:80"     # HTTP
+      - "443:443"   # HTTPS
+      - "8404:8404" # Stats
+    networks:
+      - swarm-internal
+      - swarm-external
+    depends_on:
+      - swarm-queen
+      - prometheus
+      - grafana
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =========================================================================
+  # SECURITY & BACKUP LAYER
+  # =========================================================================
+
+  # Backup Service
+  backup-service:
+    build:
+      context: ..
+      dockerfile: swarm-agents/infrastructure/docker/Dockerfile.backup
+    container_name: tge-backup-service
+    environment:
+      - POSTGRES_URL=postgresql://swarm_user:${POSTGRES_PASSWORD:-swarm_secure_pass}@postgres-primary:5432/tge_swarm
+      - BACKUP_SCHEDULE=0 2 * * *  # Daily at 2 AM
+      - BACKUP_RETENTION_DAYS=30
+      - S3_BUCKET=${BACKUP_S3_BUCKET:-tge-swarm-backups}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - ./backups:/app/backups
+      - ./safla-memory:/app/safla-memory:ro
+      - ./logs:/app/logs:ro
+    networks:
+      - swarm-internal
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    restart: unless-stopped
+
+# =========================================================================
+# VOLUMES
+# =========================================================================
+volumes:
+  postgres_primary_data:
+    driver: local
+  redis_master_1_data:
+    driver: local
+  redis_master_2_data:
+    driver: local
+  redis_master_3_data:
+    driver: local
+  consul_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+
+# =========================================================================
+# NETWORKS
+# =========================================================================
+networks:
+  # Internal network for service-to-service communication
+  swarm-internal:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+  # Database network
+  swarm-db:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+  # Cache network
+  swarm-cache:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+
+  # Agent communication network
+  swarm-agents:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+
+  # Service discovery network
+  swarm-discovery:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.24.0.0/24
+
+  # Monitoring network
+  swarm-monitoring:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
+
+  # External facing network
+  swarm-external:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/24

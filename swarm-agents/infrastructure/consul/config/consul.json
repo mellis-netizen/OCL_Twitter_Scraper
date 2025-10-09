@@ -1,0 +1,76 @@
+{
+  "datacenter": "tge-swarm",
+  "data_dir": "/consul/data",
+  "log_level": "INFO",
+  "server": true,
+  "bootstrap": true,
+  "ui_config": {
+    "enabled": true
+  },
+  "bind_addr": "0.0.0.0",
+  "client_addr": "0.0.0.0",
+  "retry_join": ["consul"],
+  "encrypt": "CONSUL_ENCRYPT_KEY_CHANGE_THIS",
+  "acl": {
+    "enabled": false,
+    "default_policy": "allow",
+    "enable_token_persistence": true
+  },
+  "connect": {
+    "enabled": true
+  },
+  "ports": {
+    "grpc": 8502
+  },
+  "services": [
+    {
+      "name": "tge-swarm-queen",
+      "port": 8080,
+      "tags": ["swarm", "orchestrator", "queen"],
+      "check": {
+        "http": "http://swarm-queen:8080/health",
+        "interval": "30s"
+      }
+    },
+    {
+      "name": "tge-memory-coordinator",
+      "port": 8002,
+      "tags": ["swarm", "memory", "coordinator"],
+      "check": {
+        "http": "http://swarm-memory-coordinator:8002/health",
+        "interval": "30s"
+      }
+    },
+    {
+      "name": "tge-postgres",
+      "port": 5432,
+      "tags": ["database", "postgres", "primary"],
+      "check": {
+        "tcp": "postgres-primary:5432",
+        "interval": "60s"
+      }
+    },
+    {
+      "name": "tge-redis-cluster",
+      "port": 7001,
+      "tags": ["cache", "redis", "cluster"],
+      "checks": [
+        {
+          "tcp": "redis-master-1:7001",
+          "interval": "30s"
+        },
+        {
+          "tcp": "redis-master-2:7002",
+          "interval": "30s"
+        },
+        {
+          "tcp": "redis-master-3:7003",
+          "interval": "30s"
+        }
+      ]
+    }
+  ],
+  "performance": {
+    "raft_multiplier": 1
+  }
+}

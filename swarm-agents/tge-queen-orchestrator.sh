@@ -1,210 +1,279 @@
 #!/bin/bash
 
-echo "╔════════════════════════════════════════════════════════════════╗"
-echo "║ SAFLA Neural Memory Swarm - Queen Orchestration Mode          ║"
-echo "║ TGE News Sweeper - Production Optimization & Review           ║"
-echo "╚════════════════════════════════════════════════════════════════╝"
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║ OPTIMIZED TGE Detection Swarm - Maximum Efficiency Mode         ║"
+echo "║ Focus: Scraping Speed + Detection Accuracy + Resource Efficiency║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
 
-# Initialize SAFLA memory
+# Initialize SAFLA memory with TGE focus
 ./tge-safla-init.sh
 
-# Start Queen Orchestrator
+# Start Optimized Queen Orchestrator
 echo ""
-echo "👑 Awakening Queen Orchestrator..."
+echo "👑 Deploying Efficiency-Optimized Queen Orchestrator..."
 
 claude-flow swarm create \
   --config safla-swarm-config.yaml \
   --mode queen-directed \
   --memory SAFLA \
-  --orchestration-log "./logs/queen-orchestration.log" \
+  --focus "tge-detection,scraping-efficiency,accuracy-optimization" \
+  --orchestration-log "./logs/queen-optimization.log" \
+  --priority-mode \
   --verbose
 
-# Queen's Initial Analysis Phase
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 1: Rapid Initial Analysis - TGE Detection Pipeline Focus
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "🔍 PHASE 1: Queen Initial Analysis"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 PHASE 1: Rapid TGE Detection Pipeline Analysis"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 claude-flow queen analyze \
   --repository "." \
-  --depth comprehensive \
-  --focus "scraping,keywords,performance,production-readiness" \
-  --build-mental-model \
-  --output "./reports/queen-initial-analysis.md"
+  --depth efficient \
+  --focus "tge-scraping,keyword-accuracy,api-efficiency,performance-critical-paths" \
+  --exclude "documentation,docker,tests,terraform" \
+  --priority-files "src/news_scraper*.py,src/twitter_monitor*.py,src/main*.py,config.py" \
+  --build-efficiency-model \
+  --identify-bottlenecks \
+  --output "./reports/tge-efficiency-analysis.md"
 
-# Queen Creates Strategic Plan
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 2: Strategic Optimization Plan - Quick Wins + High Impact
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "🎯 PHASE 2: Queen Strategic Planning"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🎯 PHASE 2: TGE Detection Optimization Strategy"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 claude-flow queen plan \
-  --based-on "./reports/queen-initial-analysis.md" \
-  --create-task-graph \
-  --prioritize-by-risk \
-  --optimize-for "production-grade,performance,reliability" \
-  --output "./reports/queen-strategic-plan.md"
+  --based-on "./reports/tge-efficiency-analysis.md" \
+  --create-priority-task-graph \
+  --prioritize-by-impact \
+  --identify-quick-wins \
+  --optimize-for "tge-detection-speed,accuracy,resource-efficiency" \
+  --target-metrics "95-percent-precision,50-percent-faster-scraping,30-percent-fewer-api-calls" \
+  --output "./reports/tge-optimization-plan.md"
 
-# Queen Deploys Worker Swarm with Specialized Agents
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 3: Deploy Specialized Efficiency Workers
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "🚀 PHASE 3: Queen Deploys Specialized Worker Swarm"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀 PHASE 3: Deploying 5 Elite Efficiency Specialists"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 claude-flow queen deploy-workers \
-  --plan "./reports/queen-strategic-plan.md" \
-  --agents scraping-specialist,keyword-analyzer,api-guardian,performance-optimizer,production-auditor,data-quality-sentinel,concurrency-expert,monitoring-architect \
+  --plan "./reports/tge-optimization-plan.md" \
+  --agents scraping-efficiency-specialist,tge-keyword-precision-specialist,api-reliability-optimizer,performance-bottleneck-eliminator,data-quality-enforcer \
   --parallel-execution \
-  --report-interval 3m
+  --priority-mode \
+  --report-interval 2m
 
-# Worker Agent Specializations:
-# scraping-specialist: Reviews scraper implementations, rate limiting, API usage patterns
-# keyword-analyzer: Analyzes keyword matching algorithms, accuracy, edge cases
-# api-guardian: Reviews API integrations, error handling, retry logic, rate limit compliance
-# performance-optimizer: Identifies bottlenecks, memory leaks, inefficient code patterns
-# production-auditor: Reviews production readiness, logging, monitoring, error handling
-# data-quality-sentinel: Validates data integrity, deduplication, sanitization
-# concurrency-expert: Reviews async/concurrent patterns, race conditions, deadlocks
-# monitoring-architect: Reviews observability, metrics, alerting, health checks
+# Worker Agent Focus (5 Elite Specialists):
+# 
+# 1. SCRAPING-EFFICIENCY-SPECIALIST (CRITICAL PRIORITY)
+#    → Optimize scraper performance, API rate limits, concurrent requests
+#    → Reduce API calls by 30%, increase speed by 50%
+#    → Files: news_scraper*.py, twitter_monitor*.py, main*.py
+#
+# 2. TGE-KEYWORD-PRECISION-SPECIALIST (CRITICAL PRIORITY)
+#    → Maximize TGE detection accuracy, eliminate false positives
+#    → Achieve 95% precision, reduce false positives by 50%
+#    → Files: config.py, news_scraper*.py, main*.py
+#
+# 3. API-RELIABILITY-OPTIMIZER (HIGH PRIORITY)
+#    → Robust error handling, intelligent retry, circuit breakers
+#    → Zero unhandled exceptions, graceful degradation
+#    → Files: twitter_monitor*.py, news_scraper*.py, health_endpoint.py
+#
+# 4. PERFORMANCE-BOTTLENECK-ELIMINATOR (HIGH PRIORITY)
+#    → CPU/memory optimization, async pattern improvements
+#    → Reduce memory by 40%, eliminate bottlenecks
+#    → Files: main*.py, *_optimized.py, database*.py
+#
+# 5. DATA-QUALITY-ENFORCER (MEDIUM PRIORITY)
+#    → Validate TGE data, prevent duplicates, ensure accuracy
+#    → Zero duplicates, 100% sanitization, accurate attribution
+#    → Files: utils.py, news_scraper*.py, config.py
 
-# Monitor Worker Progress
+# Monitor Worker Progress with Queen Supervision
 echo ""
-echo "🖥️ Monitoring Worker Agents (Queen Supervision Active)..."
+echo "🖥️ Active Monitoring (Queen Real-Time Supervision)..."
 
 claude-flow queen monitor \
   --dashboard \
-  --auto-redirect-on-critical \
+  --auto-escalate-critical \
   --learning-mode adaptive \
-  --output "./logs/worker-progress.log" &
+  --efficiency-tracking \
+  --output "./logs/worker-efficiency.log" &
 
 MONITOR_PID=$!
 
-# Wait for initial worker reports
-sleep 30
+# Wait for initial analysis
+sleep 20
 
-# Queen's Adaptive Coordination Loop
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 4: Real-Time Coordination & Cross-Pollination
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "🧠 PHASE 4: Adaptive Coordination (Queen Active Learning)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🧠 PHASE 4: Real-Time Efficiency Coordination"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 claude-flow queen coordinate \
-  --mode adaptive \
+  --mode adaptive-priority \
   --synthesize-continuously \
-  --redirect-on-pattern \
-  --cross-pollinate-findings \
-  --focus-areas "scraping-efficiency,keyword-accuracy,production-readiness" \
-  --output "./reports/coordination-log.md"
+  --cross-pollinate-critical-findings \
+  --focus-areas "scraping-bottlenecks,keyword-precision,api-efficiency" \
+  --escalate-blockers \
+  --output "./reports/real-time-coordination.md"
 
-# Wait for all workers to complete
+# Wait for workers to complete deep analysis
 echo ""
-echo "⏳ Waiting for all workers to complete comprehensive analysis..."
+echo "⏳ Awaiting worker completion (max 20 minutes)..."
 
-claude-flow swarm wait --timeout 30m
+claude-flow swarm wait --timeout 20m
 
-# Queen's Synthesis Phase
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 5: Master Synthesis - TGE Optimization Focus
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "🔬 PHASE 5: Queen Master Synthesis"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔬 PHASE 5: TGE Optimization Master Synthesis"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 claude-flow queen synthesize \
   --collect-worker-reports \
-  --identify-patterns \
-  --cross-cutting-analysis \
-  --priority-ranking \
+  --identify-efficiency-patterns \
+  --cross-cutting-optimizations \
+  --priority-ranking-by-impact \
   --confidence-scoring \
-  --categorize "critical-bugs,performance-issues,scraping-optimization,keyword-improvements,production-gaps,security-concerns,best-practices" \
-  --output "./reports/QUEEN_MASTER_SYNTHESIS.md"
+  --categorize "critical-bottlenecks,quick-wins,accuracy-improvements,api-optimizations,resource-savings,code-smells" \
+  --focus "tge-detection-pipeline" \
+  --output "./reports/TGE_OPTIMIZATION_MASTER_SYNTHESIS.md"
 
-# Generate Action Plan with Queen Intelligence
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 6: Prioritized Action Plan with Effort Estimates
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "📋 PHASE 6: Queen Action Plan Generation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 PHASE 6: Actionable TGE Optimization Roadmap"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 claude-flow queen action-plan \
-  --synthesis "./reports/QUEEN_MASTER_SYNTHESIS.md" \
-  --categorize-by severity,complexity,impact,priority \
-  --estimate-effort \
-  --suggest-sequence \
-  --risk-assessment \
-  --quick-wins-identification \
-  --output "./reports/PRIORITIZED_ACTION_PLAN.md"
+  --synthesis "./reports/TGE_OPTIMIZATION_MASTER_SYNTHESIS.md" \
+  --categorize-by impact,effort,risk,priority \
+  --identify-quick-wins \
+  --estimate-implementation-time \
+  --sequence-by-dependency \
+  --include-code-examples \
+  --target-metrics "95-precision,50-faster,30-fewer-calls,40-less-memory" \
+  --output "./reports/TGE_OPTIMIZATION_ACTION_PLAN.md"
 
-# Generate Code Optimization Recommendations
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 7: Scraping & Detection Optimization Guide
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "💡 PHASE 7: Code Optimization Recommendations"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-claude-flow queen code-recommendations \
-  --synthesis "./reports/QUEEN_MASTER_SYNTHESIS.md" \
-  --include-examples \
-  --before-after-comparisons \
-  --performance-metrics \
-  --output "./reports/CODE_OPTIMIZATION_GUIDE.md"
-
-# Generate Scraping & Keyword Optimization Report
-echo ""
-echo "🎯 PHASE 8: Scraping & Keyword Optimization Insights"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "💡 PHASE 7: TGE Scraping & Detection Optimization Guide"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 claude-flow queen specialized-report \
-  --focus scraping-keywords \
-  --include-metrics \
-  --benchmark-suggestions \
-  --testing-recommendations \
-  --output "./reports/SCRAPING_KEYWORD_OPTIMIZATION.md"
+  --focus tge-scraping-optimization \
+  --include "before-after-code,performance-benchmarks,api-usage-patterns,keyword-strategies" \
+  --metrics "precision,recall,false-positive-rate,api-call-reduction,speed-improvement" \
+  --actionable-recommendations \
+  --output "./reports/TGE_SCRAPING_OPTIMIZATION_GUIDE.md"
 
-# Generate Production Readiness Checklist
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 8: Keyword Accuracy Enhancement Report
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "✅ PHASE 9: Production Readiness Assessment"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🎯 PHASE 8: TGE Keyword Detection Enhancement"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-claude-flow queen production-checklist \
-  --synthesis "./reports/QUEEN_MASTER_SYNTHESIS.md" \
-  --include-deployment-guide \
-  --monitoring-requirements \
-  --sla-recommendations \
-  --output "./reports/PRODUCTION_READINESS_CHECKLIST.md"
+claude-flow queen specialized-report \
+  --focus tge-keyword-accuracy \
+  --analyze "current-keywords,false-positive-patterns,missed-detections,company-disambiguation" \
+  --recommend "keyword-improvements,context-filters,scoring-algorithms" \
+  --target "95-percent-precision,50-percent-false-positive-reduction" \
+  --output "./reports/TGE_KEYWORD_ENHANCEMENT_REPORT.md"
 
-# Queen's Executive Summary
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 9: API Efficiency & Reliability Report
+# ═══════════════════════════════════════════════════════════════════════
 echo ""
-echo "📊 PHASE 10: Executive Summary for Humans"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚡ PHASE 9: API Efficiency & Reliability Optimization"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+claude-flow queen specialized-report \
+  --focus api-optimization \
+  --analyze "rate-limiting,error-handling,retry-logic,circuit-breakers,connection-pooling" \
+  --recommend "intelligent-backoff,caching-strategies,request-batching,error-recovery" \
+  --target "30-percent-api-reduction,zero-unhandled-errors,intelligent-rate-limit-handling" \
+  --output "./reports/API_EFFICIENCY_REPORT.md"
+
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 10: Executive Summary for Implementation
+# ═══════════════════════════════════════════════════════════════════════
+echo ""
+echo "📊 PHASE 10: Executive Implementation Summary"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 claude-flow queen executive-summary \
-  --synthesis "./reports/QUEEN_MASTER_SYNTHESIS.md" \
-  --action-plan "./reports/PRIORITIZED_ACTION_PLAN.md" \
+  --synthesis "./reports/TGE_OPTIMIZATION_MASTER_SYNTHESIS.md" \
+  --action-plan "./reports/TGE_OPTIMIZATION_ACTION_PLAN.md" \
   --format markdown \
-  --include-visualizations \
+  --include "quick-wins,high-impact-improvements,effort-estimates,implementation-sequence" \
   --tldr \
-  --key-metrics \
-  --impact-summary \
-  --output "./reports/EXECUTIVE_SUMMARY.md"
+  --metrics-dashboard \
+  --roi-analysis \
+  --output "./reports/TGE_EXECUTIVE_SUMMARY.md"
 
 # Stop monitoring
-kill $MONITOR_PID
+kill $MONITOR_PID 2>/dev/null
 
 echo ""
-echo "✨ Queen Orchestration Complete!"
+echo "✨ TGE Optimization Swarm Analysis Complete!"
 echo ""
-echo "📊 Reports Generated:"
-echo "   → Queen Initial Analysis: ./reports/queen-initial-analysis.md"
-echo "   → Strategic Plan: ./reports/queen-strategic-plan.md"
-echo "   → Master Synthesis: ./reports/QUEEN_MASTER_SYNTHESIS.md"
-echo "   → Prioritized Action Plan: ./reports/PRIORITIZED_ACTION_PLAN.md"
-echo "   → Code Optimization Guide: ./reports/CODE_OPTIMIZATION_GUIDE.md"
-echo "   → Scraping/Keyword Optimization: ./reports/SCRAPING_KEYWORD_OPTIMIZATION.md"
-echo "   → Production Readiness: ./reports/PRODUCTION_READINESS_CHECKLIST.md"
-echo "   → Executive Summary: ./reports/EXECUTIVE_SUMMARY.md"
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║                  📊 GENERATED REPORTS                            ║"
+echo "╠══════════════════════════════════════════════════════════════════╣"
+echo "║ → Master Synthesis                                               ║"
+echo "║   ./reports/TGE_OPTIMIZATION_MASTER_SYNTHESIS.md                 ║"
+echo "║                                                                  ║"
+echo "║ → Prioritized Action Plan                                        ║"
+echo "║   ./reports/TGE_OPTIMIZATION_ACTION_PLAN.md                      ║"
+echo "║                                                                  ║"
+echo "║ → Scraping Optimization Guide                                    ║"
+echo "║   ./reports/TGE_SCRAPING_OPTIMIZATION_GUIDE.md                   ║"
+echo "║                                                                  ║"
+echo "║ → Keyword Enhancement Report                                     ║"
+echo "║   ./reports/TGE_KEYWORD_ENHANCEMENT_REPORT.md                    ║"
+echo "║                                                                  ║"
+echo "║ → API Efficiency Report                                          ║"
+echo "║   ./reports/API_EFFICIENCY_REPORT.md                             ║"
+echo "║                                                                  ║"
+echo "║ → Executive Summary                                              ║"
+echo "║   ./reports/TGE_EXECUTIVE_SUMMARY.md                             ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🔍 Worker Reports: ./reports/workers/"
-echo "📝 Orchestration Logs: ./logs/"
-echo "🧠 SAFLA Memory State: ./safla-memory/"
+echo "🔍 Additional Resources:"
+echo "   → Worker Reports: ./reports/workers/"
+echo "   → Coordination Logs: ./logs/"
+echo "   → SAFLA Memory: ./safla-memory/"
 echo ""
-echo "╔════════════════════════════════════════════════════════════════╗"
-echo "║  Key Focus Areas Analyzed:                                     ║"
-echo "║  ✓ Scraping efficiency & rate limiting                         ║"
-echo "║  ✓ Keyword matching accuracy & optimization                    ║"
-echo "║  ✓ Production-grade error handling                             ║"
-echo "║  ✓ Performance bottlenecks & optimization                      ║"
-echo "║  ✓ Data quality & validation                                   ║"
-echo "║  ✓ Monitoring & observability                                  ║"
-echo "║                                                                 ║"
-echo "║  Review the Executive Summary for immediate next steps         ║"
-echo "╚═══════════════════════════════════════════════════════════
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║  🎯 PRIMARY OPTIMIZATION TARGETS ANALYZED:                       ║"
+echo "╠══════════════════════════════════════════════════════════════════╣"
+echo "║  ✓ TGE Scraping Speed & Efficiency                               ║"
+echo "║  ✓ Keyword Detection Precision (Target: 95%)                     ║"
+echo "║  ✓ False Positive Reduction (Target: 50% reduction)              ║"
+echo "║  ✓ API Call Optimization (Target: 30% reduction)                 ║"
+echo "║  ✓ Memory Usage (Target: 40% reduction)                          ║"
+echo "║  ✓ Error Handling & Reliability                                  ║"
+echo "║  ✓ Company Name Disambiguation                                   ║"
+echo "║  ✓ Rate Limiting Intelligence                                    ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "⚡ NEXT STEPS:"
+echo "   1. Review TGE_EXECUTIVE_SUMMARY.md for quick wins"
+echo "   2. Follow TGE_OPTIMIZATION_ACTION_PLAN.md sequence"
+echo "   3. Implement high-impact optimizations first"
+echo "   4. Measure improvements against target metrics"
+echo ""

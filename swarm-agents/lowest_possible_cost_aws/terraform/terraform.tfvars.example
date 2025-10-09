@@ -1,0 +1,109 @@
+# TGE Swarm Ultra-Low-Cost Deployment Configuration
+# Copy this file to terraform.tfvars and customize values
+
+# =============================================================================
+# REQUIRED VARIABLES
+# =============================================================================
+
+# AWS EC2 Key Pair name for SSH access
+key_name = "your-aws-key-pair-name"
+
+# =============================================================================
+# BASIC CONFIGURATION
+# =============================================================================
+
+# AWS region (us-east-1 is typically cheapest)
+aws_region = "us-east-1"
+
+# Environment name
+environment = "cost-optimized"
+
+# Project name prefix
+project_name = "tge-swarm"
+
+# =============================================================================
+# COST OPTIMIZATION SETTINGS
+# =============================================================================
+
+# Enable automatic shutdown during off-hours
+auto_shutdown_enabled = true
+
+# Shutdown schedule (cron format, UTC)
+# Default: 10 PM UTC daily
+auto_shutdown_schedule = "0 22 * * *"
+
+# Startup schedule (cron format, UTC) 
+# Default: 6 AM UTC, weekdays only
+auto_startup_schedule = "0 6 * * 1-5"
+
+# Disable detailed monitoring to save costs
+enable_detailed_monitoring = false
+
+# Minimal storage size (GB)
+storage_size = 20
+
+# Short backup retention to save storage costs
+backup_retention_days = 7
+
+# Monthly cost alert threshold (USD)
+cost_threshold = 150
+
+# =============================================================================
+# FEATURE TOGGLES
+# =============================================================================
+
+# Enable monitoring stack (Prometheus + Grafana)
+enable_monitoring_stack = true
+
+# Enable S3 backups (adds ~$1/month, disabled by default)
+enable_backup_to_s3 = false
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+
+# CIDR blocks allowed to access the infrastructure
+# IMPORTANT: Restrict this in production!
+allowed_cidr_blocks = ["0.0.0.0/0"]
+
+# =============================================================================
+# OPTIONAL: DOMAIN AND SSL
+# =============================================================================
+
+# Domain name for SSL certificate (leave empty to skip)
+# domain_name = "myswarm.example.com"
+
+# Whether to manage DNS with Route53 (requires domain_name)
+# manage_dns_with_route53 = false
+
+# =============================================================================
+# OPTIONAL: ALERTING
+# =============================================================================
+
+# Email address for cost and system alerts
+# alert_email = "admin@example.com"
+
+# =============================================================================
+# ADVANCED CONFIGURATION
+# =============================================================================
+
+# Spot instance interruption behavior
+spot_instance_interruption_behavior = "stop"
+
+# =============================================================================
+# ESTIMATED MONTHLY COSTS (Reference Only)
+# =============================================================================
+
+# Main Instance (t3.small spot):     ~$4.50
+# Backup Instance (t3.nano):         ~$3.80  
+# EBS Storage (20GB gp3):            ~$2.00
+# Application Load Balancer:         ~$16.20
+# Data Transfer (estimated):         ~$5.00
+# CloudWatch Basic:                  ~$3.50
+# SNS Notifications:                 ~$0.50
+# Lambda (cost optimizer):           ~$0.20
+# S3 Backups (if enabled):           ~$1.00
+# 
+# TOTAL ESTIMATED:                   ~$35-45/month
+#
+# Note: Actual costs may vary based on usage patterns and AWS pricing changes

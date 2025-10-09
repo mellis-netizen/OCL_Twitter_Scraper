@@ -1,0 +1,290 @@
+# TGE Swarm Alerting Rules
+# Critical alerts for swarm health and performance
+
+groups:
+  - name: swarm_infrastructure
+    interval: 30s
+    rules:
+    
+    # Agent Health Alerts
+    - alert: AgentInstanceDown
+      expr: up{job="swarm-agents"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: agent
+      annotations:
+        summary: "Swarm agent instance is down"
+        description: "Agent {{ $labels.agent_type }} instance {{ $labels.instance_id }} has been down for more than 1 minute"
+        runbook_url: "https://docs.tge-swarm.com/runbooks/agent-down"
+
+    - alert: AgentHighRestartRate
+      expr: increase(container_restart_count{container_label_swarm_managed="true"}[10m]) > 3
+      for: 5m
+      labels:
+        severity: warning
+        component: agent
+      annotations:
+        summary: "High restart rate for swarm agent"
+        description: "Agent {{ $labels.container_label_swarm_agent_name }} has restarted {{ $value }} times in the last 10 minutes"
+
+    - alert: AgentMemoryUsageHigh
+      expr: swarm:memory_usage_percentage > 90
+      for: 5m
+      labels:
+        severity: warning
+        component: agent
+      annotations:
+        summary: "High memory usage in swarm agent"
+        description: "Agent {{ $labels.container_label_swarm_agent_name }} memory usage is {{ $value }}%"
+
+    - alert: AgentCPUUsageHigh
+      expr: swarm:cpu_usage_percentage > 80
+      for: 10m
+      labels:
+        severity: warning
+        component: agent
+      annotations:
+        summary: "High CPU usage in swarm agent"
+        description: "Agent {{ $labels.container_label_swarm_agent_name }} CPU usage is {{ $value }}%"
+
+    # Queen Orchestrator Alerts
+    - alert: SwarmQueenDown
+      expr: up{job="swarm-queen"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: queen
+      annotations:
+        summary: "Swarm Queen Orchestrator is down"
+        description: "The Swarm Queen Orchestrator has been unreachable for more than 2 minutes"
+        runbook_url: "https://docs.tge-swarm.com/runbooks/queen-down"
+
+    - alert: MemoryCoordinatorDown
+      expr: up{job="memory-coordinator"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: memory
+      annotations:
+        summary: "Memory Coordinator is down"
+        description: "The Swarm Memory Coordinator has been unreachable for more than 2 minutes"
+
+    # Database Alerts
+    - alert: PostgreSQLDown
+      expr: up{job="postgres"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: database
+      annotations:
+        summary: "PostgreSQL database is down"
+        description: "PostgreSQL primary database has been down for more than 2 minutes"
+
+    - alert: PostgreSQLHighConnections
+      expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+        component: database
+      annotations:
+        summary: "PostgreSQL connection usage is high"
+        description: "PostgreSQL is using {{ $value }}% of available connections"
+
+    # Redis Cluster Alerts
+    - alert: RedisClusterNodeDown
+      expr: up{job="redis-cluster"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: cache
+      annotations:
+        summary: "Redis cluster node is down"
+        description: "Redis cluster node {{ $labels.redis_instance }} has been down for more than 1 minute"
+
+    - alert: RedisMemoryUsageHigh
+      expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+        component: cache
+      annotations:
+        summary: "Redis memory usage is high"
+        description: "Redis instance {{ $labels.instance }} memory usage is {{ $value }}%"
+
+    # Service Discovery Alerts
+    - alert: ConsulDown
+      expr: up{job="consul"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: discovery
+      annotations:
+        summary: "Consul service discovery is down"
+        description: "Consul has been unreachable for more than 2 minutes"
+
+  - name: tge_application_performance
+    interval: 30s
+    rules:
+
+    # TGE Detection Performance
+    - alert: TGEDetectionAccuracyLow
+      expr: tge:detection_accuracy_ratio < 90
+      for: 10m
+      labels:
+        severity: warning
+        component: detection
+      annotations:
+        summary: "TGE detection accuracy is below threshold"
+        description: "TGE detection accuracy is {{ $value }}% (threshold: 90%)"
+
+    - alert: TGEFalsePositiveRateHigh
+      expr: rate(tge_false_positives_total[5m]) / rate(tge_detection_total[5m]) * 100 > 10
+      for: 5m
+      labels:
+        severity: warning
+        component: detection
+      annotations:
+        summary: "TGE false positive rate is high"
+        description: "False positive rate is {{ $value }}% (threshold: 10%)"
+
+    - alert: TGENoDetectionsRecent
+      expr: increase(tge_detection_total[30m]) == 0
+      for: 30m
+      labels:
+        severity: warning
+        component: detection
+      annotations:
+        summary: "No TGE detections in the last 30 minutes"
+        description: "The system hasn't detected any TGEs in the last 30 minutes, which may indicate an issue"
+
+    # API Performance
+    - alert: APICallsRateHigh
+      expr: rate(api_calls_total[5m]) > 100
+      for: 5m
+      labels:
+        severity: warning
+        component: api
+      annotations:
+        summary: "API call rate is unusually high"
+        description: "API call rate is {{ $value }} calls/second (normal: <100/s)"
+
+    - alert: ScrapingDurationHigh
+      expr: scraping_duration_seconds > 300
+      for: 5m
+      labels:
+        severity: warning
+        component: scraping
+      annotations:
+        summary: "Scraping duration is high"
+        description: "Scraping duration is {{ $value }} seconds (threshold: 300s)"
+
+    - alert: APIErrorRateHigh
+      expr: rate(api_errors_total[5m]) / rate(api_calls_total[5m]) * 100 > 5
+      for: 5m
+      labels:
+        severity: warning
+        component: api
+      annotations:
+        summary: "API error rate is high"
+        description: "API error rate is {{ $value }}% (threshold: 5%)"
+
+  - name: system_resources
+    interval: 30s
+    rules:
+
+    # System Resource Alerts
+    - alert: HighMemoryUsage
+      expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+      for: 5m
+      labels:
+        severity: critical
+        component: system
+      annotations:
+        summary: "High memory usage on host"
+        description: "Memory usage is {{ $value }}% (threshold: 90%)"
+
+    - alert: HighCPUUsage
+      expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+      for: 10m
+      labels:
+        severity: warning
+        component: system
+      annotations:
+        summary: "High CPU usage on host"
+        description: "CPU usage is {{ $value }}% (threshold: 85%)"
+
+    - alert: LowDiskSpace
+      expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 85
+      for: 5m
+      labels:
+        severity: warning
+        component: system
+      annotations:
+        summary: "Low disk space"
+        description: "Disk usage on {{ $labels.mountpoint }} is {{ $value }}% (threshold: 85%)"
+
+    - alert: HighLoadAverage
+      expr: node_load15 / count by(instance) (node_cpu_seconds_total{mode="system"}) > 2
+      for: 15m
+      labels:
+        severity: warning
+        component: system
+      annotations:
+        summary: "High load average"
+        description: "Load average is {{ $value }} (threshold: 2.0)"
+
+  - name: monitoring_infrastructure
+    interval: 60s
+    rules:
+
+    # Monitoring Stack Health
+    - alert: PrometheusDown
+      expr: up{job="prometheus"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: monitoring
+      annotations:
+        summary: "Prometheus is down"
+        description: "Prometheus has been down for more than 2 minutes"
+
+    - alert: GrafanaDown
+      expr: up{job="grafana"} == 0
+      for: 5m
+      labels:
+        severity: warning
+        component: monitoring
+      annotations:
+        summary: "Grafana is down"
+        description: "Grafana has been down for more than 5 minutes"
+
+    - alert: AlertManagerDown
+      expr: up{job="alertmanager"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: monitoring
+      annotations:
+        summary: "AlertManager is down"
+        description: "AlertManager has been down for more than 2 minutes"
+
+    - alert: PrometheusTargetDown
+      expr: up == 0
+      for: 5m
+      labels:
+        severity: warning
+        component: monitoring
+      annotations:
+        summary: "Prometheus target is down"
+        description: "Target {{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes"
+
+    - alert: PrometheusStorageSpace
+      expr: prometheus_tsdb_symbol_table_size_bytes / prometheus_config_last_reload_success_timestamp_seconds > 0.8
+      for: 10m
+      labels:
+        severity: warning
+        component: monitoring
+      annotations:
+        summary: "Prometheus storage space is running low"
+        description: "Prometheus storage usage is high"

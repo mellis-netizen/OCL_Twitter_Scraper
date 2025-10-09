@@ -1,0 +1,75 @@
+# Testing Requirements for TGE Swarm Backend
+# Install with: pip install -r tests/requirements.txt
+
+# Core testing framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+pytest-timeout>=2.1.0
+pytest-xdist>=3.3.0
+pytest-html>=3.2.0
+
+# Async testing support
+asyncio-mqtt>=0.13.0
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+
+# Mock and fixtures
+factory-boy>=3.3.0
+freezegun>=1.2.0
+responses>=0.23.0
+httpx>=0.24.0
+
+# Performance testing
+pytest-benchmark>=4.0.0
+memory-profiler>=0.61.0
+psutil>=5.9.0
+
+# Database testing
+pytest-postgresql>=5.0.0
+sqlalchemy>=2.0.0
+alembic>=1.11.0
+
+# Docker testing support
+pytest-docker>=2.0.0
+testcontainers>=3.7.0
+
+# Load testing
+locust>=2.16.0
+aioload>=1.0.0
+
+# WebSocket testing
+websockets>=11.0.0
+pytest-websockets>=0.2.0
+
+# Network and HTTP testing
+requests-mock>=1.11.0
+pytest-httpserver>=1.0.0
+vcrpy>=5.1.0
+
+# Data validation and schemas
+jsonschema>=4.18.0
+pydantic>=2.0.0
+marshmallow>=3.20.0
+
+# Logging and monitoring
+structlog>=23.1.0
+loguru>=0.7.0
+
+# Code quality and linting (for CI)
+black>=23.7.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.5.0
+bandit>=1.7.0
+
+# Test reporting
+pytest-json-report>=1.5.0
+pytest-metadata>=3.0.0
+allure-pytest>=2.13.0
+
+# Development utilities
+ipdb>=0.13.0
+rich>=13.5.0
+typer>=0.9.0

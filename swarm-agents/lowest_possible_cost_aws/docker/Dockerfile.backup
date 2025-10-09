@@ -1,0 +1,48 @@
+# Ultra-Low-Cost Backup Container
+# Handles local backups with optional S3 sync
+# Cost Optimization Engineer: Claude
+
+FROM alpine:3.18
+
+# Install required packages
+RUN apk add --no-cache \
+    bash \
+    curl \
+    postgresql-client \
+    redis \
+    tar \
+    gzip \
+    aws-cli \
+    dcron \
+    logrotate \
+    && rm -rf /var/cache/apk/*
+
+# Create backup user
+RUN adduser -D -s /bin/bash backup
+
+# Create directories
+RUN mkdir -p /app/backups /app/scripts /app/logs \
+    && chown -R backup:backup /app
+
+# Copy backup scripts
+COPY scripts/backup-local.sh /app/scripts/
+COPY scripts/backup-s3-sync.sh /app/scripts/
+COPY scripts/restore.sh /app/scripts/
+COPY scripts/cleanup-old-backups.sh /app/scripts/
+
+# Copy cron configuration
+COPY config/backup-crontab /etc/crontabs/backup
+
+# Make scripts executable
+RUN chmod +x /app/scripts/*.sh \
+    && chown -R backup:backup /app
+
+# Switch to backup user
+USER backup
+
+# Health check
+HEALTHCHECK --interval=300s --timeout=30s --start-period=60s --retries=3 \
+    CMD /app/scripts/health-check-backup.sh
+
+# Default command starts cron and keeps container running
+CMD ["crond", "-f", "-d", "8"]
