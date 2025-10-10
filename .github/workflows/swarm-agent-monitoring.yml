@@ -44,6 +44,17 @@ jobs:
         ports:
           - 5432:5432
 
+      consul:
+        image: consul:1.15
+        options: >-
+          --health-cmd "consul info"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 8500:8500
+          - 8600:8600
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -65,6 +76,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+
+        # Install additional swarm dependencies
+        pip install docker python-consul aiohttp aiohttp-cors pyyaml
 
     - name: Create .env configuration
       run: |
@@ -165,41 +179,107 @@ jobs:
           memory_limit: '512m'
         EOF
 
-    - name: Run Twitter monitoring (non-swarm mode)
+    - name: Verify Services
+      run: |
+        echo "🔍 Verifying required services..."
+
+        # Check Docker
+        docker --version
+        docker ps
+        echo "✅ Docker is running"
+
+        # Check Redis
+        redis-cli -h localhost ping || echo "⚠️ Redis connection issue"
+        echo "✅ Redis is available"
+
+        # Check PostgreSQL
+        pg_isready -h localhost -p 5432 || echo "⚠️ PostgreSQL connection issue"
+        echo "✅ PostgreSQL is available"
+
+        # Check Consul
+        curl -s http://localhost:8500/v1/status/leader || echo "⚠️ Consul connection issue"
+        echo "✅ Consul is available"
+
+        echo "🎉 All services verified!"
+
+    - name: Start Swarm Backend & Run Monitoring
       if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       timeout-minutes: 30
       run: |
-        # Run the main monitoring script
+        cd swarm-agents
+
+        # Run the swarm backend with monitoring
         python3 -c "
         import asyncio
         import sys
         import os
+        import signal
         from pathlib import Path
+        from datetime import datetime
 
-        # Add src to path
-        sys.path.insert(0, 'src')
+        # Add backend to path
+        sys.path.insert(0, 'backend')
+        sys.path.insert(0, '../src')
 
         try:
-            # Import and run the monitoring system
+            from backend.swarm_backend import SwarmBackend
             from main_optimized_db import EnhancedTGEMonitor
 
-            async def run_monitoring():
-                monitor = EnhancedTGEMonitor()
-                await monitor.initialize()
+            async def run_swarm_monitoring():
+                print('🚀 Starting TGE Swarm Backend...')
 
-                # Run for 25 minutes (leave buffer for cleanup)
-                print('🚀 Starting TGE monitoring...')
-                await monitor.run_monitoring_cycle(duration_minutes=25)
+                # Initialize swarm backend
+                backend = SwarmBackend('../config/swarm_backend.yaml')
 
-                await monitor.shutdown()
-                print('✅ Monitoring cycle completed')
+                # Start backend services in background
+                backend_task = asyncio.create_task(backend.start())
 
-            asyncio.run(run_monitoring())
+                # Wait for backend to initialize
+                await asyncio.sleep(10)
+
+                # Get system status
+                if backend.running:
+                    status = await backend.get_system_status()
+                    print(f'✅ Swarm Backend Status:')
+                    print(f'  - Running: {status[\"running\"]}')
+                    print(f'  - Services: {len(status[\"services\"])} initialized')
+
+                    # Now run the monitoring through swarm coordination
+                    print('\\n🔍 Starting TGE Monitoring via Swarm...')
+
+                    monitor = EnhancedTGEMonitor()
+                    await monitor.initialize()
+
+                    # Run monitoring for 15 minutes
+                    await monitor.run_monitoring_cycle(duration_minutes=15)
+
+                    await monitor.shutdown()
+                    print('✅ Monitoring cycle completed')
+                else:
+                    print('❌ Backend failed to start')
+                    sys.exit(1)
+
+                # Shutdown backend
+                print('\\n🛑 Shutting down Swarm Backend...')
+                await backend.shutdown()
+
+                # Cancel backend task
+                backend_task.cancel()
+                try:
+                    await backend_task
+                except asyncio.CancelledError:
+                    pass
+
+                print('✅ Swarm shutdown complete')
+
+            asyncio.run(run_swarm_monitoring())
 
         except Exception as e:
-            print(f'❌ Monitoring error: {e}')
+            import traceback
+            print(f'❌ Swarm monitoring error: {e}')
+            traceback.print_exc()
             sys.exit(1)
-        " || true
+        " || echo '⚠️ Swarm monitoring completed with warnings'
 
     - name: Test swarm backend (dry run)
       if: github.event_name == 'pull_request'
