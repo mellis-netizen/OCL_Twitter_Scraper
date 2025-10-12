@@ -18,7 +18,8 @@
       "Bash(chmod:*)",
       "Bash(tree:*)",
       "Bash(gh run list:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "WebSearch"
     ],
     "deny": []
   },
