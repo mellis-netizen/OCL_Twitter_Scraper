@@ -389,7 +389,15 @@ class OptimizedNewsScraper:
                 relevance_info['matched_keywords'].append(phrase)
                 relevance_info['confidence'] += 30
                 relevance_info['signals'].append('high_value_phrase')
-        
+
+        # General keyword matching (from self.keywords)
+        for keyword in self.keywords:
+            keyword_pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+            if re.search(keyword_pattern, full_text):
+                relevance_info['matched_keywords'].append(keyword)
+                # Lower confidence for general keywords vs high-value phrases
+                relevance_info['confidence'] += 15
+
         # Token symbol detection
         token_patterns = re.findall(r'\$[A-Z]{2,10}\b', content)
         if token_patterns:
