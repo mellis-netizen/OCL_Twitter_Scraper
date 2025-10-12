@@ -114,16 +114,16 @@ class TestNewsScraper(unittest.TestCase):
             self.companies, self.keywords, self.news_sources
         )
 
-        # Test removing extra whitespace
-        dirty_content = "Line1\n\n\n\nLine2    with     spaces"
+        # Test removing extra whitespace - lines must be >30 chars
+        dirty_content = "This is the first line of content that is long enough\n\n\n\nThis is the second line with extra spaces"
         clean_content = scraper.clean_article_content(dirty_content)
 
         self.assertNotIn('\n\n\n', clean_content)
-        self.assertIn('Line1', clean_content)
-        self.assertIn('Line2', clean_content)
+        self.assertIn('first line of content', clean_content)
+        self.assertIn('second line with extra', clean_content)
 
-        # Test removing short lines
-        content_with_short = "This is a proper paragraph\nNav\nAnother paragraph"
+        # Test removing short lines (< 30 chars)
+        content_with_short = "This is a proper paragraph with enough characters\nNav\nAnother paragraph with sufficient length"
         cleaned = scraper.clean_article_content(content_with_short)
 
         self.assertIn('proper paragraph', cleaned)
@@ -209,15 +209,16 @@ class TestNewsScraper(unittest.TestCase):
             self.companies, self.keywords, self.news_sources
         )
 
-        # Mock newspaper Article
+        # Mock newspaper Article - content must be >30 chars per line AND >100 total to cache
         mock_article = Mock()
-        mock_article.text = "Full article content about Caldera TGE"
+        long_article = "Full article content about Caldera TGE with significantly more details and information that exceeds one hundred characters total for proper caching"
+        mock_article.text = long_article
         mock_article_class.return_value = mock_article
 
         url = "https://example.com/article"
         content = scraper.fetch_article_content(url)
 
-        self.assertEqual(content, mock_article.text)
+        self.assertEqual(content, long_article)
 
         # Check caching
         cache_key = hashlib.sha256(url.encode()).hexdigest()

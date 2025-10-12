@@ -66,14 +66,15 @@ class TestNewsCacheManager(unittest.TestCase):
 
         with patch('news_scraper_optimized.Article') as mock_article_class:
             mock_article = Mock()
-            # Content needs to be >30 chars per line to pass cleaning filter
-            mock_article.text = "This is new article content that is longer than thirty characters"
+            # Content needs to be >30 chars per line AND >100 total to cache
+            long_content = "This is new article content that is significantly longer than thirty characters per line and also exceeds one hundred characters total"
+            mock_article.text = long_content
             mock_article_class.return_value = mock_article
 
             content = self.scraper.fetch_article_content(url)
 
             # Should fetch new content
-            self.assertEqual(content, "This is new article content that is longer than thirty characters")
+            self.assertEqual(content, long_content)
 
             # Should cache the content
             cache_key = hashlib.sha256(url.encode()).hexdigest()
@@ -252,8 +253,8 @@ class TestCachePerformance(unittest.TestCase):
         # First pass - all misses
         with patch('news_scraper_optimized.Article') as mock_article_class:
             mock_article = Mock()
-            # Content needs to be >30 chars per line to pass cleaning filter
-            mock_article.text = "This is article content that is longer than thirty characters"
+            # Content needs to be >30 chars per line AND >100 total to cache
+            mock_article.text = "This is article content that is significantly longer than thirty characters per line and exceeds one hundred characters total to ensure caching works properly"
             mock_article_class.return_value = mock_article
 
             for url in urls:

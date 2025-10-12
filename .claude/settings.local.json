@@ -19,7 +19,8 @@
       "Bash(tree:*)",
       "Bash(gh run list:*)",
       "Bash(mv:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(cat:*)"
     ],
     "deny": []
   },
