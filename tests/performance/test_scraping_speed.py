@@ -169,7 +169,8 @@ class TestScrapingSpeed(unittest.TestCase):
         # First access - cache miss
         with patch('news_scraper_optimized.Article') as mock_article_class:
             mock_article = Mock()
-            mock_article.text = "Content"
+            # Content must be >100 chars to be cached
+            mock_article.text = "This is article content that is significantly longer than one hundred characters so it will be properly cached by the system"
             mock_article_class.return_value = mock_article
 
             start_time = time.time()
@@ -183,7 +184,8 @@ class TestScrapingSpeed(unittest.TestCase):
 
         print(f"\n[PERF] Cache miss: {miss_duration*1000:.2f}ms")
         print(f"[PERF] Cache hit: {hit_duration*1000:.2f}ms")
-        print(f"[PERF] Speedup: {miss_duration/hit_duration:.2f}x")
+        if hit_duration > 0:
+            print(f"[PERF] Speedup: {miss_duration/hit_duration:.2f}x")
 
         # Cache hit should be significantly faster
         self.assertLess(hit_duration, miss_duration)
