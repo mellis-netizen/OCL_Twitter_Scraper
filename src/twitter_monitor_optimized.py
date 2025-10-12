@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class OptimizedTwitterMonitor:
     """Enhanced Twitter monitoring with rate limit management and batch operations."""
-    
+
     def __init__(self, bearer_token: str, companies: List[Dict], keywords: List[str]):
         self.bearer_token = bearer_token
         self.companies = companies
@@ -34,6 +34,9 @@ class OptimizedTwitterMonitor:
         self.cache = self.load_cache()
         self.rate_limits = defaultdict(dict)
         self.rate_limit_lock = Lock()
+
+        # Swarm coordination hooks (optional, set via set_swarm_hooks)
+        self.swarm_hooks = None
         
         # Initialize Twitter client
         self._init_client()
@@ -41,6 +44,11 @@ class OptimizedTwitterMonitor:
         # Compile regex patterns for better matching
         self.token_pattern = re.compile(r'\$[A-Z]{2,10}\b')  # Match $TOKEN patterns
         self.company_patterns = self._compile_company_patterns()
+
+    def set_swarm_hooks(self, swarm_hooks):
+        """Set swarm coordination hooks for multi-agent coordination."""
+        self.swarm_hooks = swarm_hooks
+        logger.info("Swarm hooks enabled for Twitter monitor")
         
     def _init_client(self):
         """Initialize Twitter API v2 client with error handling."""
@@ -116,11 +124,23 @@ class OptimizedTwitterMonitor:
     
     def check_rate_limit(self, endpoint: str) -> bool:
         """Check if we can make a request to the given endpoint."""
+        # First check swarm shared rate limit state (if enabled)
+        if self.swarm_hooks and self.swarm_hooks.enabled:
+            swarm_limit_info = self.swarm_hooks.get_rate_limit_state(f"twitter/{endpoint}")
+            if swarm_limit_info:
+                remaining = swarm_limit_info.get('remaining', 1)
+                reset_time = swarm_limit_info.get('reset', 0)
+                if remaining <= 0 and time.time() < reset_time:
+                    wait_time = reset_time - time.time()
+                    logger.warning(f"Rate limit reached for {endpoint} (from swarm). Waiting {wait_time:.0f}s")
+                    return False
+
+        # Check local rate limit state
         with self.rate_limit_lock:
             limit_info = self.rate_limits.get(endpoint, {})
             reset_time = limit_info.get('reset', 0)
             remaining = limit_info.get('remaining', 1)
-            
+
             if remaining <= 0 and time.time() < reset_time:
                 wait_time = reset_time - time.time()
                 logger.warning(f"Rate limit reached for {endpoint}. Waiting {wait_time:.0f}s")
@@ -132,11 +152,17 @@ class OptimizedTwitterMonitor:
         if hasattr(response, 'headers'):
             with self.rate_limit_lock:
                 headers = response.headers
-                self.rate_limits[endpoint] = {
+                limit_info = {
                     'limit': int(headers.get('x-rate-limit-limit', 100)),
                     'remaining': int(headers.get('x-rate-limit-remaining', 1)),
                     'reset': int(headers.get('x-rate-limit-reset', time.time() + 900))
                 }
+                self.rate_limits[endpoint] = limit_info
+
+                # Coordinate rate limit with swarm (if enabled)
+                if self.swarm_hooks and self.swarm_hooks.enabled:
+                    self.swarm_hooks.coordinate_rate_limit(f"twitter/{endpoint}", limit_info)
+                    logger.debug(f"Coordinated rate limit for twitter/{endpoint}: {limit_info['remaining']}/{limit_info['limit']}")
     
     def batch_lookup_users(self, handles: List[str]) -> Dict[str, str]:
         """Batch lookup user IDs to minimize API calls."""

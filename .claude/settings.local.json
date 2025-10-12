@@ -10,7 +10,13 @@
       "Bash(source:*)",
       "Bash(pip install:*)",
       "Bash(mkdir:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npx claude-flow@alpha hooks pre-task:*)",
+      "Bash(python3:*)",
+      "Bash(python3 /Users/apple/Documents/GitHub/OCL_Twitter_Scraper-1/tests/test_swarm_integration.py)",
+      "Bash(npx:*)",
+      "Bash(chmod:*)",
+      "Bash(tree:*)"
     ],
     "deny": []
   },
