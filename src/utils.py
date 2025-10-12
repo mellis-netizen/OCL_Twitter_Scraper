@@ -271,8 +271,8 @@ def sanitize_html_content(content: str) -> str:
     
     for tag in dangerous_tags:
         # Remove both opening and closing tags
-        content = re.sub(f'<\s*{tag}[^>]*>.*?<\s*/\s*{tag}\s*>', '', content, flags=re.IGNORECASE | re.DOTALL)
-        content = re.sub(f'<\s*{tag}[^>]*/?>', '', content, flags=re.IGNORECASE)
+        content = re.sub(rf'<\s*{tag}[^>]*>.*?<\s*/\s*{tag}\s*>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(rf'<\s*{tag}[^>]*/?>', '', content, flags=re.IGNORECASE)
     
     # Remove dangerous attributes from remaining tags
     dangerous_attrs = [
@@ -282,8 +282,8 @@ def sanitize_html_content(content: str) -> str:
     ]
     
     for attr in dangerous_attrs:
-        content = re.sub(f'{attr}\s*=\s*["\'][^"\']*["\']', '', content, flags=re.IGNORECASE)
-        content = re.sub(f'{attr}\s*=\s*[^>\s]*', '', content, flags=re.IGNORECASE)
+        content = re.sub(rf'{attr}\s*=\s*["\'][^"\']*["\']', '', content, flags=re.IGNORECASE)
+        content = re.sub(rf'{attr}\s*=\s*[^>\s]*', '', content, flags=re.IGNORECASE)
     
     # Limit content size to prevent DoS
     if len(content) > 1024 * 1024:  # 1MB limit

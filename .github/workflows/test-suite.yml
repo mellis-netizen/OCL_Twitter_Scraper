@@ -1,0 +1,172 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+      fail-fast: false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-timeout pytest-xdist
+
+    - name: Create directories
+      run: |
+        mkdir -p state
+        mkdir -p logs
+        mkdir -p reports/coverage
+        mkdir -p tests/logs
+
+    - name: Run unit tests
+      run: |
+        pytest tests/unit/ -v --tb=short --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing
+      continue-on-error: false
+
+    - name: Run integration tests
+      run: |
+        pytest tests/integration/ -v --tb=short --cov=src --cov-append --cov-report=xml --cov-report=html
+      continue-on-error: false
+
+    - name: Run performance tests
+      run: |
+        pytest tests/performance/ -v --tb=short
+      continue-on-error: true
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+        fail_ci_if_error: false
+
+    - name: Generate coverage report
+      run: |
+        pip install coverage
+        coverage report --fail-under=80
+      continue-on-error: true
+
+    - name: Archive test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: |
+          reports/coverage/
+          coverage.xml
+          .coverage
+          htmlcov/
+          *.log
+        retention-days: 30
+        if-no-files-found: warn
+
+  performance-regression:
+    name: Performance Regression Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-benchmark
+
+    - name: Run performance benchmarks
+      run: |
+        pytest tests/performance/ --benchmark-only --benchmark-json=benchmark.json
+      continue-on-error: true
+
+    - name: Check for performance regression
+      run: |
+        # Compare with baseline (if exists)
+        if [ -f baseline-benchmark.json ]; then
+          python scripts/compare_benchmarks.py baseline-benchmark.json benchmark.json
+        fi
+      continue-on-error: true
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pylint black isort mypy
+
+    - name: Run flake8
+      run: |
+        flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+      continue-on-error: true
+
+    - name: Run pylint
+      run: |
+        pylint src/ --exit-zero --max-line-length=120
+      continue-on-error: true
+
+    - name: Check code formatting with black
+      run: |
+        black --check src/ tests/ --line-length=120
+      continue-on-error: true
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only src/ tests/
+      continue-on-error: true
+
+  notify:
+    name: Notify on Failure
+    needs: [test, code-quality]
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+    - name: Send notification
+      run: |
+        echo "Tests failed! Check the workflow logs."
+        # Add notification logic here (email, Slack, etc.)

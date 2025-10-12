@@ -122,24 +122,24 @@ COMPANIES = [
     {"name": "Curvance", "aliases": ["Curvance Finance", "Curvance Protocol"], "tokens": ["CRV", "CURV"], "exclusions": [], "priority": "HIGH", "status": "pre_token"},
     {"name": "Fhenix", "aliases": ["Fhenix Protocol", "Fhenix Labs"], "tokens": ["FHE"], "exclusions": [], "priority": "HIGH", "status": "pre_token"},
     {"name": "Succinct", "aliases": ["Succinct Labs", "Succinct Protocol"], "tokens": ["SP1", "SUC"], "exclusions": ["succinct definition", "succinct writing"], "priority": "HIGH", "status": "pre_token"},
-    {"name": "Caldera", "aliases": ["Caldera Labs", "Caldera Protocol", "Caldera Chain"], "tokens": ["CAL"], "exclusions": ["volcanic caldera", "yellowstone caldera"], "priority": "HIGH", "status": "pre_token"},
-    {"name": "Fabric", "aliases": ["Fabric Protocol", "Fabric Labs", "Fabric Cryptography"], "tokens": ["FAB"], "exclusions": ["fabric softener", "textile fabric", "fabric store"], "priority": "HIGH", "status": "pre_token"},
+    {"name": "Caldera", "aliases": ["Caldera Labs", "Caldera Protocol", "Caldera Chain"], "tokens": ["CAL"], "exclusions": ["volcanic caldera", "yellowstone caldera", "caldera formation", "volcanic activity", "eruption", "volcano", "magma", "lava", "geological"], "priority": "HIGH", "status": "pre_token"},
+    {"name": "Fabric", "aliases": ["Fabric Protocol", "Fabric Labs", "Fabric Cryptography"], "tokens": ["FAB"], "exclusions": ["fabric softener", "textile fabric", "fabric store", "fabric material", "cotton fabric", "silk fabric", "fabric pattern", "sewing fabric", "quilting fabric", "fabric texture", "fashion fabric"], "priority": "HIGH", "status": "pre_token"},
 
     # MEDIUM PRIORITY - Established projects that may launch additional tokens
-    {"name": "TreasureDAO", "aliases": ["Treasure DAO", "Treasure", "Treasure Protocol"], "tokens": ["MAGIC"], "exclusions": ["treasure hunt", "national treasure"], "priority": "MEDIUM", "status": "has_token"},
-    {"name": "Camelot", "aliases": ["Camelot DEX", "Camelot Protocol"], "tokens": ["GRAIL"], "exclusions": ["king arthur", "camelot movie"], "priority": "MEDIUM", "status": "has_token"},
-    {"name": "XAI", "aliases": ["Xai Games", "Xai", "XAI Games"], "tokens": ["XAI"], "exclusions": ["explainable ai", "xai technology"], "priority": "MEDIUM", "status": "has_token"},
-    {"name": "Huddle01", "aliases": ["Huddle 01", "Huddle01 Protocol"], "tokens": ["HUD01", "HUDDLE"], "exclusions": ["football huddle", "team huddle"], "priority": "MEDIUM", "status": "pre_token"},
+    {"name": "TreasureDAO", "aliases": ["Treasure DAO", "Treasure", "Treasure Protocol"], "tokens": ["MAGIC"], "exclusions": ["treasure hunt", "national treasure", "treasure map", "hidden treasure", "treasure chest", "gold treasure", "ancient treasure", "lost treasure"], "priority": "MEDIUM", "status": "has_token"},
+    {"name": "Camelot", "aliases": ["Camelot DEX", "Camelot Protocol"], "tokens": ["GRAIL"], "exclusions": ["king arthur", "camelot movie", "camelot musical", "knights of the round table"], "priority": "MEDIUM", "status": "has_token"},
+    {"name": "XAI", "aliases": ["Xai Games", "Xai", "XAI Games"], "tokens": ["XAI"], "exclusions": ["explainable ai", "xai technology", "explainability", "interpretable ai"], "priority": "MEDIUM", "status": "has_token"},
+    {"name": "Huddle01", "aliases": ["Huddle 01", "Huddle01 Protocol"], "tokens": ["HUD01", "HUDDLE"], "exclusions": ["football huddle", "team huddle", "sports huddle"], "priority": "MEDIUM", "status": "pre_token"},
 
     # LOWER PRIORITY - Less clear token plans or stablecoins
     {"name": "Open Eden", "aliases": ["OpenEden", "Open Eden Protocol"], "tokens": ["TBILL"], "exclusions": [], "priority": "LOW", "status": "has_token"},
     {"name": "USD.ai", "aliases": ["USDai", "USD AI", "USD.ai Protocol"], "tokens": ["USDAI"], "exclusions": [], "priority": "LOW", "status": "stablecoin"},
-    {"name": "Espresso", "aliases": ["Espresso Systems", "Espresso Labs"], "tokens": ["ESPR"], "exclusions": ["coffee", "espresso machine", "starbucks"], "priority": "LOW", "status": "infrastructure"},
+    {"name": "Espresso", "aliases": ["Espresso Systems", "Espresso Labs"], "tokens": ["ESPR"], "exclusions": ["coffee", "espresso machine", "starbucks", "espresso shot", "coffee beans", "brew", "caffeine", "coffee shop", "latte", "cappuccino", "macchiato"], "priority": "LOW", "status": "infrastructure"},
 
     # EXPERIMENTAL - Less certain companies, monitoring for activity
-    {"name": "DuckChain", "aliases": ["Duck Chain", "DuckChain Protocol"], "tokens": ["DUCK"], "exclusions": ["rubber duck", "donald duck"], "priority": "LOW", "status": "experimental"},
-    {"name": "Spacecoin", "aliases": ["Space Coin", "Spacecoin Protocol"], "tokens": ["SPACE"], "exclusions": ["nasa", "space exploration"], "priority": "LOW", "status": "experimental"},
-    {"name": "Clique", "aliases": ["Clique Protocol", "Clique Labs"], "tokens": ["CLI"], "exclusions": ["social clique", "clique theory"], "priority": "LOW", "status": "experimental"}
+    {"name": "DuckChain", "aliases": ["Duck Chain", "DuckChain Protocol"], "tokens": ["DUCK"], "exclusions": ["rubber duck", "donald duck", "ducks", "waterfowl"], "priority": "LOW", "status": "experimental"},
+    {"name": "Spacecoin", "aliases": ["Space Coin", "Spacecoin Protocol"], "tokens": ["SPACE"], "exclusions": ["nasa", "space exploration", "outer space", "spacex", "space travel"], "priority": "LOW", "status": "experimental"},
+    {"name": "Clique", "aliases": ["Clique Protocol", "Clique Labs"], "tokens": ["CLI"], "exclusions": ["social clique", "clique theory", "friendship clique", "popular clique"], "priority": "LOW", "status": "experimental"}
 ]
 
 # TGE-related keywords - categorized by confidence level
@@ -166,7 +166,34 @@ HIGH_CONFIDENCE_TGE_KEYWORDS = [
     # Distribution and claim patterns
     "token claim", "claim portal", "claiming is live", "distribution event",
     "token unlock schedule", "vesting schedule released",
-    "tokenomics revealed", "token allocation"
+    "tokenomics revealed", "token allocation",
+
+    # NEW: Live action phrases (HIGH PRECISION)
+    "token claim live", "claiming portal open", "claim window open",
+    "claim page live", "distribution begins", "tokens available now",
+    "claim your tokens now", "claiming starts today", "claiming starts now",
+    "claim period open", "distribution live", "token distribution live",
+    "distribution event started", "check if you're eligible", "eligible to claim",
+
+    # NEW: Completion signals (HIGH PRECISION)
+    "token generation complete", "mainnet token deployed", "token contract deployed",
+    "genesis block mined", "network is live", "token now available",
+    "contract verified", "token successfully deployed",
+
+    # NEW: Snapshot and eligibility (HIGH PRECISION)
+    "airdrop snapshot taken", "eligibility snapshot", "snapshot completed",
+    "check eligibility", "snapshot complete", "eligibility check live",
+    "airdrop eligibility", "qualified for airdrop",
+
+    # NEW: Participation events (HIGH PRECISION)
+    "whitelist live", "public sale begins", "token sale round",
+    "contribution period open", "fundraising live", "sale starts now",
+    "public sale live", "whitelist open", "registration open",
+
+    # NEW: Community and retroactive (HIGH PRECISION)
+    "community airdrop", "retroactive distribution", "user rewards distribution",
+    "ecosystem airdrop", "retroactive airdrop", "community rewards",
+    "loyalty airdrop", "early adopter airdrop"
 ]
 
 # Medium confidence keywords (require company context) - contextual TGE signals
@@ -190,7 +217,27 @@ MEDIUM_CONFIDENCE_TGE_KEYWORDS = [
     # Exchange and trading related
     "exchange listing", "dex listing", "cex listing",
     "liquidity pool", "LP tokens", "trading pair",
-    "market making", "liquidity provision"
+    "market making", "liquidity provision",
+
+    # NEW: Vesting and unlock events
+    "vesting begins", "token unlock event", "cliff period ends",
+    "linear vesting starts", "unlock schedule", "vesting schedule",
+
+    # NEW: Staking and rewards
+    "staking live", "stake to earn", "staking rewards begin",
+    "validator rewards", "staking portal open", "staking enabled",
+
+    # NEW: Governance activation
+    "governance live", "voting begins", "DAO launch",
+    "proposal system live", "governance portal",
+
+    # NEW: L2/Rollup specific
+    "rollup token", "L2 token launch", "sequencer token",
+    "rollup mainnet", "L2 mainnet",
+
+    # NEW: Migration and bridge
+    "token migration", "contract migration", "token swap event",
+    "bridge live", "cross-chain launch"
 ]
 
 # Low confidence keywords (require company + multiple strong indicators)
@@ -199,12 +246,13 @@ LOW_CONFIDENCE_TGE_KEYWORDS = [
     "announce", "announced", "announcing", "announcement",
     "introducing", "excited to share", "big news",
     "major update", "important update", "milestone",
-    
+
     # Timing indicators
     "coming soon", "launch date", "release date", "go live",
     "next week", "this month", "Q1", "Q2", "Q3", "Q4",
     "roadmap update", "timeline", "schedule",
-    
+    "this week", "next month", "this year",
+
     # Platform/exchange related
     "available on", "trading on", "listed on", "live on",
     "integrated with", "deployed on", "partnership with",
@@ -216,18 +264,53 @@ EXCLUSION_PATTERNS = [
     # Gaming/NFT false positives
     "game token", "in-game token", "nft drop", "nft collection",
     "play to earn", "gaming rewards", "achievement token",
-    
+    "loot drop", "item drop", "reward drop", "battle pass",
+    "season pass", "cosmetic drop", "skin drop",
+    "in-app purchase", "game currency", "premium currency",
+    "unlock achievement", "level up reward",
+    "gacha", "loot box", "treasure chest",
+
     # Technical/Development false positives
     "test token", "testnet", "devnet", "staging",
     "mock token", "demo token", "example token",
-    
+
     # General crypto news false positives
     "bitcoin", "ethereum", "btc", "eth", "stable coin",
     "wrapped token", "bridge token", "pegged token",
-    
+
     # Opinion/Analysis false positives
     "token analysis", "token review", "token prediction",
-    "price prediction", "market analysis", "technical analysis"
+    "price prediction", "market analysis", "technical analysis",
+    "my take on", "opinion piece", "analysis of",
+    "what if", "could be", "might be", "speculation",
+    "rumor", "unconfirmed", "allegedly",
+    "hope", "wish", "want to see",
+    "prediction for", "forecast", "outlook",
+
+    # Historical/Retrospective content
+    "recap of", "looking back", "anniversary of",
+    "history of", "evolution of", "timeline of",
+    "flashback", "throwback", "remember when",
+    "previous", "former", "old", "past",
+    "archived", "historical", "legacy",
+    "last year", "in 2023", "in 2022",
+
+    # Tutorial/Educational content
+    "how to claim", "guide to", "tutorial", "walkthrough",
+    "explained", "breakdown", "deep dive",
+    "learn about", "understanding", "what is",
+    "beginner's guide", "introduction to",
+    "on sale", "best deals", "sale this week",
+    "for sale", "buy now", "purchase",
+
+    # Company name false positives (from company exclusions - for comprehensive filtering)
+    "fabric softener", "espresso machine", "coffee shop",
+    "volcanic caldera", "treasure hunt",
+
+    # Scam/Phishing patterns
+    "free airdrop", "guaranteed airdrop", "get free tokens",
+    "double your", "send to receive", "giveaway",
+    "limited time offer", "act now", "don't miss out"
 ]
 
 # Combined list for backward compatibility
@@ -355,5 +438,66 @@ TWITTER_CONFIG = {
 LOG_CONFIG = {
     'level': os.getenv('LOG_LEVEL', 'INFO'),
     'file': os.getenv('LOG_FILE', 'logs/crypto_monitor.log')
+}
+
+# Swarm coordination configuration
+SWARM_CONFIG = {
+    'enabled': os.getenv('SWARM_ENABLED', 'false').lower() == 'true',
+    'session_id': os.getenv('SWARM_SESSION_ID', None),
+    'agent_id': os.getenv('SWARM_AGENT_ID', 'main-scraper'),
+    'agent_role': os.getenv('SWARM_AGENT_ROLE', 'scraping-efficiency-specialist'),
+    'coordination_enabled': os.getenv('SWARM_COORDINATION_ENABLED', 'true').lower() == 'true',
+    'memory_enabled': os.getenv('SWARM_MEMORY_ENABLED', 'true').lower() == 'true',
+    'rate_limit_coordination': os.getenv('SWARM_RATE_LIMIT_COORD', 'true').lower() == 'true',
+    'dedup_coordination': os.getenv('SWARM_DEDUP_COORD', 'true').lower() == 'true',
+}
+
+# Swarm agent definitions (matching safla-swarm-config.yaml)
+SWARM_AGENTS = {
+    'scraping-efficiency-specialist': {
+        'role': 'primary-optimizer',
+        'priority': 'critical',
+        'focus': [
+            'scraper-performance-tuning',
+            'api-rate-limit-optimization',
+            'concurrent-request-efficiency',
+            'cache-strategy-optimization'
+        ],
+        'files': [
+            'src/news_scraper*.py',
+            'src/twitter_monitor*.py',
+            'src/main*.py'
+        ]
+    },
+    'tge-keyword-precision-specialist': {
+        'role': 'accuracy-optimizer',
+        'priority': 'critical',
+        'focus': [
+            'keyword-matching-precision',
+            'false-positive-elimination',
+            'company-name-matching-accuracy',
+            'context-aware-filtering'
+        ],
+        'files': [
+            'config.py',
+            'src/news_scraper*.py',
+            'src/main*.py'
+        ]
+    },
+    'api-reliability-optimizer': {
+        'role': 'integration-hardener',
+        'priority': 'high',
+        'focus': [
+            'error-handling-robustness',
+            'retry-mechanism-optimization',
+            'circuit-breaker-implementation',
+            'rate-limit-intelligent-backoff'
+        ],
+        'files': [
+            'src/twitter_monitor*.py',
+            'src/news_scraper*.py',
+            'src/health_endpoint.py'
+        ]
+    }
 }
 

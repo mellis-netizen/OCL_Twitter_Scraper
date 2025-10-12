@@ -33,11 +33,14 @@ logger = logging.getLogger(__name__)
 
 class OptimizedNewsScraper:
     """Enhanced news scraper with full article extraction and intelligent processing."""
-    
+
     def __init__(self, companies: List[Dict], keywords: List[str], news_sources: List[str]):
         self.companies = companies
         self.keywords = keywords
         self.news_sources = news_sources
+
+        # Swarm coordination hooks (optional, set via set_swarm_hooks)
+        self.swarm_hooks = None
         
         # State management
         self.state_file = 'state/news_state.json'
@@ -60,6 +63,11 @@ class OptimizedNewsScraper:
         # Compile regex patterns
         self.url_normalizers = self._compile_url_normalizers()
         self.content_cleaners = self._compile_content_cleaners()
+
+    def set_swarm_hooks(self, swarm_hooks):
+        """Set swarm coordination hooks for multi-agent coordination."""
+        self.swarm_hooks = swarm_hooks
+        logger.info("Swarm hooks enabled for news scraper")
         
     def load_state(self) -> Dict:
         """Load persistent state with feed statistics."""
@@ -172,7 +180,18 @@ class OptimizedNewsScraper:
     
     def fetch_article_content(self, url: str) -> Optional[str]:
         """Fetch and extract full article content."""
-        # Check cache first
+        # Check swarm shared cache first (if enabled)
+        if self.swarm_hooks and self.swarm_hooks.enabled:
+            cache_key = hashlib.sha256(url.encode()).hexdigest()
+            swarm_cached = self.swarm_hooks.check_duplicate(f"article_{cache_key}")
+            if swarm_cached:
+                logger.debug(f"Using swarm cached content for: {url}")
+                # Try to retrieve from swarm memory
+                cached_content = self.swarm_hooks.memory_retrieve(f"articles/{cache_key}", shared=True)
+                if cached_content:
+                    return cached_content
+
+        # Check local cache
         cache_key = hashlib.sha256(url.encode()).hexdigest()
         if cache_key in self.cache['articles']:
             logger.debug(f"Using cached content for: {url}")
@@ -199,7 +218,7 @@ class OptimizedNewsScraper:
             # Clean content
             content = self.clean_article_content(content)
             
-            # Cache the result
+            # Cache the result locally
             if content and len(content) > 100:
                 self.cache['articles'][cache_key] = {
                     'content': content,
@@ -207,7 +226,32 @@ class OptimizedNewsScraper:
                     'length': len(content)
                 }
                 self.save_cache()
-            
+
+                # Also cache in swarm shared memory (if enabled)
+                if self.swarm_hooks and self.swarm_hooks.enabled:
+                    self.swarm_hooks.coordinate_deduplication(
+                        f"article_{cache_key}",
+                        {
+                            'url': url,
+                            'cached_at': datetime.now(timezone.utc).isoformat(),
+                            'length': len(content)
+                        }
+                    )
+                    # Store content in shared memory for other agents
+                    self.swarm_hooks.memory_store(
+                        f"articles/{cache_key}",
+                        content[:5000],  # Store first 5000 chars
+                        ttl=3600,
+                        shared=True
+                    )
+
+                    # Post-edit hook to notify other agents
+                    self.swarm_hooks.post_edit(
+                        f"article_cache/{cache_key}",
+                        operation="create",
+                        memory_key=f"swarm/shared/articles/{cache_key}"
+                    )
+
             return content
             
         except Exception as e:

@@ -21,7 +21,7 @@ import re
 
 # Import configurations
 from config import (
-    EMAIL_CONFIG, TWITTER_CONFIG, LOG_CONFIG,
+    EMAIL_CONFIG, TWITTER_CONFIG, LOG_CONFIG, SWARM_CONFIG,
     COMPANIES, TGE_KEYWORDS, NEWS_SOURCES,
     HIGH_CONFIDENCE_TGE_KEYWORDS, MEDIUM_CONFIDENCE_TGE_KEYWORDS,
     LOW_CONFIDENCE_TGE_KEYWORDS, EXCLUSION_PATTERNS
@@ -31,6 +31,9 @@ from config import (
 from twitter_monitor_optimized import OptimizedTwitterMonitor
 from news_scraper_optimized import OptimizedNewsScraper
 from email_notifier import EmailNotifier
+
+# Import swarm coordination
+from swarm_integration import SwarmCoordinationHooks
 
 # Configure logging
 def setup_logging():
@@ -57,10 +60,25 @@ logger = setup_logging()
 
 class OptimizedCryptoTGEMonitor:
     """Enhanced TGE monitoring system with optimized detection capabilities."""
-    
-    def __init__(self):
+
+    def __init__(self, swarm_enabled: bool = None):
+        # Initialize swarm coordination
+        self.swarm_hooks = SwarmCoordinationHooks(
+            enabled=swarm_enabled if swarm_enabled is not None else SWARM_CONFIG['enabled'],
+            session_id=SWARM_CONFIG.get('session_id')
+        )
+
+        # Restore swarm session if enabled
+        if self.swarm_hooks.enabled:
+            self.swarm_hooks.session_restore()
+            logger.info("Swarm coordination enabled for TGE monitor")
+
         self.email_notifier = EmailNotifier(EMAIL_CONFIG)
         self.news_scraper = OptimizedNewsScraper(COMPANIES, TGE_KEYWORDS, NEWS_SOURCES)
+
+        # Pass swarm hooks to scrapers
+        if hasattr(self.news_scraper, 'set_swarm_hooks'):
+            self.news_scraper.set_swarm_hooks(self.swarm_hooks)
         
         # Initialize Twitter monitor if configured
         self.twitter_monitor = None
@@ -71,6 +89,11 @@ class OptimizedCryptoTGEMonitor:
                     COMPANIES,
                     TGE_KEYWORDS
                 )
+
+                # Pass swarm hooks to Twitter monitor
+                if hasattr(self.twitter_monitor, 'set_swarm_hooks'):
+                    self.twitter_monitor.set_swarm_hooks(self.swarm_hooks)
+
                 logger.info("Twitter monitoring enabled with optimizations")
             except Exception as e:
                 logger.error(f"Failed to initialize Twitter monitor: {str(e)}")
@@ -373,7 +396,10 @@ class OptimizedCryptoTGEMonitor:
         cycle_start = time.time()
         logger.info("=" * 60)
         logger.info("Starting optimized monitoring cycle")
-        
+
+        # Pre-task hook
+        task_id = self.swarm_hooks.pre_task("TGE monitoring cycle - news and Twitter scraping")
+
         try:
             all_alerts = []
             
@@ -443,10 +469,40 @@ class OptimizedCryptoTGEMonitor:
             self.metrics['total_cycles'] += 1
             self.metrics['total_cycle_time'] += cycle_time
             self.metrics['last_cycle_time'] = cycle_time
-            
+
+            # Prepare metrics for swarm
+            cycle_metrics = {
+                'cycle_time': cycle_time,
+                'alerts_found': len(all_alerts),
+                'high_confidence_alerts': len([a for a in all_alerts if a['confidence'] >= 0.7]),
+                'news_articles_processed': self.metrics.get('news_articles_processed', 0),
+                'tweets_processed': self.metrics.get('tweets_processed', 0)
+            }
+
+            # Post-task hook (successful)
+            self.swarm_hooks.post_task(task_id, status='completed', metrics=cycle_metrics)
+
+            # Store cycle results in shared memory for other agents
+            self.swarm_hooks.memory_store(
+                'latest_cycle_results',
+                {
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                    'alerts': len(all_alerts),
+                    'metrics': cycle_metrics
+                },
+                ttl=3600,
+                shared=True
+            )
+
+            # Notify swarm of completion
+            self.swarm_hooks.notify(
+                f"Monitoring cycle completed: {len(all_alerts)} alerts in {cycle_time:.1f}s",
+                level='success' if len(all_alerts) > 0 else 'info'
+            )
+
             # Save state
             self.save_state()
-            
+
             # Log performance
             logger.info(f"Monitoring cycle completed in {cycle_time:.1f}s")
             logger.info(f"Total alerts sent: {len(all_alerts)}")
@@ -456,10 +512,20 @@ class OptimizedCryptoTGEMonitor:
                     tier = f"{int(alert['confidence']*100)//10*10}-{int(alert['confidence']*100)//10*10+9}%"
                     confidence_dist[tier] += 1
                 logger.info(f"Confidence distribution: {dict(confidence_dist)}")
-            
+
         except Exception as e:
             logger.error(f"Error in monitoring cycle: {str(e)}", exc_info=True)
             self.metrics['error_cycles'] += 1
+
+            # Post-task hook (failed)
+            self.swarm_hooks.post_task(
+                task_id,
+                status='failed',
+                metrics={'error': str(e), 'cycle_time': time.time() - cycle_start}
+            )
+
+            # Notify swarm of error
+            self.swarm_hooks.notify(f"Monitoring cycle failed: {str(e)}", level='error')
     
     def send_weekly_summary(self):
         """Send comprehensive weekly summary."""
@@ -538,6 +604,11 @@ class OptimizedCryptoTGEMonitor:
         logger.info("Shutting down TGE monitor")
         self.running = False
         self.save_state()
+
+        # End swarm session
+        if self.swarm_hooks.enabled:
+            self.swarm_hooks.session_end(export_metrics=True)
+            logger.info("Swarm session ended")
 
 
 def main():

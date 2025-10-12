@@ -1,0 +1,137 @@
+# TGE Swarm Configuration
+# Copy this file to tge_swarm.yaml and customize
+
+cluster_name: tge-swarm
+log_level: INFO
+log_file: logs/orchestrator.log
+scraping_interval: 300  # Scraping cycle interval in seconds (5 minutes)
+
+# Redis Configuration
+redis_urls:
+  - localhost:6379
+
+# Memory Configuration
+memory_path: ./tge-memory
+
+# Agent Configuration
+agents:
+  # News Scraper Agents
+  news_scraper:
+    count: 2  # Number of parallel news scraper agents
+    enable_hooks: true
+    timeout: 120  # Scraping timeout in seconds
+
+  # Twitter Monitor Agents
+  twitter_monitor:
+    count: 1  # Number of parallel Twitter monitor agents
+    enable_hooks: true
+    timeout: 60
+
+  # Keyword Analyzer Agents
+  keyword_analyzer:
+    count: 2  # Number of parallel analyzer agents
+    enable_hooks: true
+    similarity_threshold: 0.85
+
+  # Data Quality Agents
+  data_quality:
+    count: 1
+    enable_hooks: true
+    similarity_threshold: 0.85
+    min_content_length: 100
+    min_confidence: 0.3
+    max_age_days: 7
+
+# Coordinator Configuration
+coordinator:
+  max_workload_per_agent: 5
+  enable_hooks: true
+
+# TGE Detection Configuration
+
+# Companies to Monitor
+companies:
+  - name: "Starknet"
+    aliases: ["StarkWare", "StarkEx"]
+    tokens: ["STRK"]
+    priority: "HIGH"
+
+  - name: "zkSync"
+    aliases: ["Matter Labs", "zkSync Era"]
+    tokens: ["ZK"]
+    priority: "HIGH"
+
+  - name: "LayerZero"
+    aliases: ["LZ"]
+    tokens: ["ZRO"]
+    priority: "HIGH"
+
+  - name: "Wormhole"
+    aliases: ["W"]
+    tokens: ["W"]
+    priority: "MEDIUM"
+
+  - name: "Celestia"
+    aliases: ["TIA"]
+    tokens: ["TIA"]
+    priority: "MEDIUM"
+
+  - name: "Eigenlayer"
+    aliases: ["Eigen"]
+    tokens: ["EIGEN"]
+    priority: "HIGH"
+
+# Keywords for TGE Detection
+keywords:
+  # High Priority Keywords
+  - "token generation event"
+  - "tge is live"
+  - "airdrop is live"
+  - "claim your tokens"
+  - "token launch date"
+  - "tokens are now available"
+  - "trading is now live"
+  - "token distribution"
+  - "claim window"
+
+  # Medium Priority Keywords
+  - "mainnet launch"
+  - "tokenomics"
+  - "token sale"
+  - "listing"
+  - "trading live"
+  - "airdrop announcement"
+  - "token allocation"
+  - "token unlock"
+  - "vesting schedule"
+
+  # General Keywords
+  - "tge"
+  - "airdrop"
+  - "launch"
+  - "announcement"
+  - "distribution"
+  - "claim"
+  - "whitelist"
+  - "snapshot"
+
+# News Sources (RSS Feeds)
+news_sources:
+  # Major Crypto News
+  - "https://cointelegraph.com/rss"
+  - "https://cryptoslate.com/feed/"
+  - "https://decrypt.co/feed"
+  - "https://www.coindesk.com/arc/outboundfeeds/rss/"
+  - "https://www.theblockcrypto.com/rss.xml"
+
+  # Specialized Feeds
+  - "https://blog.ethereum.org/feed.xml"
+  - "https://medium.com/feed/@starkware"
+  - "https://blog.matter-labs.io/feed"
+
+# Twitter Configuration
+# Set via environment variable: export TWITTER_BEARER_TOKEN="your-token"
+twitter_bearer_token: null
+
+# Twitter Accounts to Monitor (defined in config.py)
+# These are loaded from config.py's TWITTER_ACCOUNTS
