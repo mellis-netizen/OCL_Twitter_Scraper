@@ -41,7 +41,8 @@ class TestCacheHitRate(unittest.TestCase):
         # First pass - all misses
         with patch('news_scraper_optimized.Article') as mock_article_class:
             mock_article = Mock()
-            mock_article.text = "Content"
+            # Content must be >100 chars to be cached (see line 222 in news_scraper_optimized.py)
+            mock_article.text = "This is article content that is significantly longer than one hundred characters so it will be properly cached by the system"
             mock_article_class.return_value = mock_article
 
             for url in urls:
@@ -78,7 +79,8 @@ class TestCacheHitRate(unittest.TestCase):
 
         with patch('news_scraper_optimized.Article') as mock_article_class:
             mock_article = Mock()
-            mock_article.text = "Content"
+            # Content must be >100 chars to be cached
+            mock_article.text = "This is article content that is significantly longer than one hundred characters so it will be properly cached by the system"
             mock_article_class.return_value = mock_article
 
             hits_by_pass = []
@@ -126,7 +128,8 @@ class TestCachePerformanceImpact(unittest.TestCase):
         # Uncached access
         with patch('news_scraper_optimized.Article') as mock_article_class:
             mock_article = Mock()
-            mock_article.text = "Content"
+            # Content must be >100 chars to be cached
+            mock_article.text = "This is article content that is significantly longer than one hundred characters so it will be properly cached by the system"
             mock_article_class.return_value = mock_article
 
             start_time = time.time()
@@ -162,7 +165,8 @@ class TestCachePerformanceImpact(unittest.TestCase):
 
         with patch('news_scraper_optimized.Article') as mock_article_class:
             mock_article = Mock()
-            mock_article.text = "Content"
+            # Content must be >100 chars to be cached
+            mock_article.text = "This is article content that is significantly longer than one hundred characters so it will be properly cached by the system"
             mock_article_class.return_value = mock_article
 
             for url in urls:
