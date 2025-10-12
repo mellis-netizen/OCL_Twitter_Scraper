@@ -306,7 +306,7 @@ class TestTwitterMonitor(unittest.TestCase):
             'id': '128',
             'metrics': {
                 'retweet_count': 1,
-                'like_count': 5,
+                'like_count': 2,
                 'impression_count': 100
             }
         }

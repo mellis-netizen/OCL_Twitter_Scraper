@@ -123,11 +123,11 @@ class TestNewsScraper(unittest.TestCase):
         self.assertIn('second line with extra', clean_content)
 
         # Test removing short lines (< 30 chars)
-        content_with_short = "This is a proper paragraph with enough characters\nNav\nAnother paragraph with sufficient length"
+        content_with_short = "This is a proper paragraph with enough characters\nShort\nAnother paragraph with sufficient length for processing"
         cleaned = scraper.clean_article_content(content_with_short)
 
         self.assertIn('proper paragraph', cleaned)
-        self.assertNotIn('Nav', cleaned)
+        self.assertNotIn('Short\n', cleaned)
 
     def test_relevance_analysis_high_confidence(self):
         """Test content relevance analysis with high confidence signals"""

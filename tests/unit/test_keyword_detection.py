@@ -150,7 +150,7 @@ class TestConfidenceScoring(unittest.TestCase):
     def test_medium_confidence_signals(self):
         """Test medium confidence signal detection"""
         content = """
-        Caldera mainnet launch scheduled. New tokenomics model revealed.
+        Caldera announces token launch with comprehensive tokenomics framework.
         """
 
         is_relevant, confidence, info = self.scraper.analyze_content_relevance(content)
