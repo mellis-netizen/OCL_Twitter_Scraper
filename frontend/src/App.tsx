@@ -32,7 +32,7 @@ function App() {
               <img
                 src="https://bafybeihv3qhywegw475lfvrv7qn3fczww6e3y3n5vytkz4qsdw2a3a7xcy.ipfs.dweb.link?filename=0824_Tandem_Primary_Logo_horizontal.jpg"
                 alt="Offchain Labs"
-                className="w-17 rounded"
+                className="h-8 w-auto object-contain rounded"
               />
               <div>
                 <h1 className="text-xl font-bold text-white">TGE Monitor</h1>
