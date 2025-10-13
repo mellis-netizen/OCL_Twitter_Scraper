@@ -1,0 +1,73 @@
+"""
+Setup configuration for TGE Monitor
+"""
+from setuptools import setup, find_packages
+
+setup(
+    name="tge-monitor",
+    version="2.0.0",
+    description="Token Generation Event monitoring and alert system",
+    author="OCL Twitter Scraper Team",
+    packages=find_packages(exclude=["tests", "tests.*", "docs"]),
+    python_requires=">=3.8",
+    install_requires=[
+        "requests>=2.31.0",
+        "feedparser==6.0.12",
+        "schedule==1.2.2",
+        "python-dotenv>=1.0.0",
+        "tweepy>=4.14.0",
+        "psutil==7.1.0",
+        "python-dateutil==2.9.0.post0",
+        "urllib3<2.0,>=1.26.0",
+        "requests-oauthlib>=1.2.0,<2.0",
+        "fastapi>=0.109.0",
+        "starlette>=0.28.0",
+        "httpx>=0.25.0",
+        "uvicorn>=0.25.0",
+        "pydantic==2.5.0",
+        "sqlalchemy==2.0.23",
+        "alembic==1.13.0",
+        "psycopg2-binary==2.9.9",
+        "redis==5.0.1",
+        "python-jose[cryptography]==3.3.0",
+        "bcrypt>=4.0.0",
+        "python-multipart==0.0.6",
+        "websockets==12.0",
+        "beautifulsoup4==4.12.2",
+        "lxml==4.9.3",
+        "newspaper3k==0.2.8",
+        "nltk==3.8.1",
+        "pandas>=2.0.0",
+    ],
+    extras_require={
+        "dev": [
+            "pytest>=8.0.0",
+            "pytest-cov>=5.0.0",
+            "pytest-timeout>=2.4.0",
+            "pytest-xdist>=3.6.0",
+            "pytest-asyncio>=0.24.0",
+            "faker>=37.0.0",
+            "black>=24.0.0",
+            "flake8>=7.0.0",
+            "pylint>=3.0.0",
+            "isort>=5.13.0",
+            "mypy>=1.8.0",
+        ],
+    },
+    entry_points={
+        "console_scripts": [
+            "tge-monitor=src.main_optimized:main",
+            "tge-api=src.api:main",
+        ],
+    },
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+    ],
+)
