@@ -20,15 +20,25 @@ from bs4 import BeautifulSoup
 from newspaper import Article
 import nltk
 
-# Download required NLTK data for article extraction
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
-
-# Configure logging
+# Configure logging first
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Download required NLTK data for article extraction
+# Use timeout and non-blocking mode to prevent initialization hang
+def _download_nltk_data():
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        try:
+            nltk.download('punkt', quiet=True, raise_on_error=True)
+        except Exception as e:
+            logger.warning(f"NLTK punkt download failed (non-critical): {e}")
+
+# Run in background to avoid blocking
+import threading
+nltk_thread = threading.Thread(target=_download_nltk_data, daemon=True)
+nltk_thread.start()
 
 
 class OptimizedNewsScraper:
