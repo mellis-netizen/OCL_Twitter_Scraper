@@ -35,6 +35,10 @@ from .email_notifier import EmailNotifier
 # Import swarm coordination
 from .swarm_integration import SwarmCoordinationHooks
 
+# Import database models for saving alerts
+from .database import DatabaseManager
+from .models import Alert, Company
+
 # Configure logging
 def setup_logging():
     """Set up comprehensive logging configuration."""
@@ -388,9 +392,71 @@ class OptimizedCryptoTGEMonitor:
         
         # Sort by confidence
         alerts.sort(key=lambda x: x['confidence'], reverse=True)
-        
+
         return alerts
-    
+
+    def save_alerts_to_database(self, alerts: List[Dict]) -> int:
+        """Save alerts to the database."""
+        saved_count = 0
+
+        try:
+            with DatabaseManager.get_session() as db:
+                # Get company name to ID mapping
+                companies = db.query(Company).all()
+                company_map = {c.name: c.id for c in companies}
+
+                for alert_data in alerts:
+                    try:
+                        # Determine urgency level based on confidence
+                        confidence = alert_data['confidence']
+                        if confidence >= 0.8:
+                            urgency = 'critical'
+                        elif confidence >= 0.7:
+                            urgency = 'high'
+                        elif confidence >= 0.5:
+                            urgency = 'medium'
+                        else:
+                            urgency = 'low'
+
+                        # Get first matched company ID
+                        company_id = None
+                        matched_companies = alert_data['analysis'].get('matched_companies', [])
+                        if matched_companies:
+                            for company_name in matched_companies:
+                                if company_name in company_map:
+                                    company_id = company_map[company_name]
+                                    break
+
+                        # Create alert object
+                        db_alert = Alert(
+                            title=alert_data.get('title', 'TGE Alert')[:500],
+                            content=alert_data.get('content', '')[:10000],
+                            source=alert_data['source'],
+                            source_url=alert_data.get('url', ''),
+                            confidence=confidence,
+                            company_id=company_id,
+                            keywords_matched=alert_data['analysis'].get('matched_keywords', []),
+                            tokens_mentioned=alert_data['analysis'].get('token_symbols', []),
+                            analysis_data=alert_data['analysis'],
+                            urgency_level=urgency,
+                            status='active'
+                        )
+
+                        db.add(db_alert)
+                        saved_count += 1
+
+                    except Exception as e:
+                        logger.error(f"Error saving individual alert: {str(e)}")
+                        continue
+
+                db.commit()
+                logger.info(f"Successfully saved {saved_count} alerts to database")
+
+        except Exception as e:
+            logger.error(f"Error saving alerts to database: {str(e)}")
+
+        return saved_count
+
     def run_monitoring_cycle(self):
         """Execute one complete monitoring cycle."""
         cycle_start = time.time()
@@ -438,13 +504,17 @@ class OptimizedCryptoTGEMonitor:
                 high_confidence = [a for a in all_alerts if a['confidence'] >= 0.7]
                 medium_confidence = [a for a in all_alerts if 0.4 <= a['confidence'] < 0.7]
                 
+                # Save alerts to database
+                saved_count = self.save_alerts_to_database(all_alerts)
+                logger.info(f"Saved {saved_count} alerts to database")
+
                 # Send email
                 success = self.email_notifier.send_tge_alerts(
                     all_alerts,
                     high_priority_count=len(high_confidence),
                     medium_priority_count=len(medium_confidence)
                 )
-                
+
                 if success:
                     # Update state
                     self.state['alert_history'].extend([
@@ -454,7 +524,7 @@ class OptimizedCryptoTGEMonitor:
                             'confidence': a['confidence']
                         } for a in all_alerts
                     ])
-                    
+
                     # Keep only recent history
                     cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
                     self.state['alert_history'] = [

@@ -29,7 +29,9 @@
       "Bash(test:*)",
       "Bash(git push:*)",
       "Bash(git rm:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(lsof:*)"
     ],
     "deny": []
   },
