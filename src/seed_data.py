@@ -2,10 +2,18 @@
 Seed database with initial data from config.py
 """
 import logging
+import sys
+from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from src.models import Company, Feed
 from src.database import SessionLocal
+
+# Add parent directory to sys.path so config.py can be imported
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 from config import COMPANIES, NEWS_SOURCES, COMPANY_TWITTERS, CORE_NEWS_TWITTERS
 
 logger = logging.getLogger(__name__)
