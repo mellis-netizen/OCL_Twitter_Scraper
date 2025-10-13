@@ -162,6 +162,22 @@ class APIClient {
     return response.data;
   }
 
+  // Monitoring sessions
+  async getSessionProgress(sessionId: string): Promise<any> {
+    const response = await this.client.get(`/monitoring/session/${sessionId}/progress`);
+    return response.data;
+  }
+
+  async getSession(sessionId: string): Promise<any> {
+    const response = await this.client.get(`/monitoring/session/${sessionId}`);
+    return response.data;
+  }
+
+  async getRecentSessions(limit: number = 10): Promise<any[]> {
+    const response = await this.client.get(`/monitoring/sessions/recent?limit=${limit}`);
+    return response.data;
+  }
+
   // Seed data
   async seedData(): Promise<any> {
     const response = await this.client.post('/seed-data');

@@ -88,7 +88,7 @@ class OptimizedCryptoTGEMonitor:
         # Pass swarm hooks to scrapers
         if hasattr(self.news_scraper, 'set_swarm_hooks'):
             self.news_scraper.set_swarm_hooks(self.swarm_hooks)
-        
+
         # Initialize Twitter monitor if configured
         self.twitter_monitor = None
         if TWITTER_CONFIG['bearer_token'] and not os.getenv('DISABLE_TWITTER'):
@@ -106,18 +106,34 @@ class OptimizedCryptoTGEMonitor:
                 logger.info("Twitter monitoring enabled with optimizations")
             except Exception as e:
                 logger.error(f"Failed to initialize Twitter monitor: {str(e)}")
-        
+
         # State management
         self.state_file = 'state/monitor_state.json'
         self.state = self.load_state()
         self.running = False
-        
+
         # Enhanced matching patterns
         self.compile_matching_patterns()
-        
+
         # Performance tracking
         self.metrics = defaultdict(int)
         self.start_time = None
+
+        # Session tracking for API integration
+        self.session_id = None
+        self.db_session = None
+
+        # Real-time tracking counters
+        self.current_cycle_stats = {
+            'articles_processed': 0,
+            'tweets_processed': 0,
+            'feeds_processed': 0,
+            'alerts_generated': 0,
+            'errors_encountered': 0
+        }
+
+        # Progress callback for real-time updates
+        self.progress_callback = None
     
     def load_state(self) -> Dict:
         """Load monitor state."""
@@ -511,62 +527,195 @@ class OptimizedCryptoTGEMonitor:
         except Exception as e:
             logger.error(f"Error updating feed statistics: {str(e)}")
 
+    def _update_progress(self, status: str, details: Dict = None):
+        """Update progress for real-time tracking"""
+        if self.session_id and self.db_session:
+            try:
+                session = self.db_session.query(MonitoringSession).filter(
+                    MonitoringSession.session_id == self.session_id
+                ).first()
+
+                if session:
+                    session.status = status
+                    session.articles_processed = self.current_cycle_stats['articles_processed']
+                    session.tweets_processed = self.current_cycle_stats['tweets_processed']
+                    session.feeds_processed = self.current_cycle_stats['feeds_processed']
+                    session.alerts_generated = self.current_cycle_stats['alerts_generated']
+                    session.errors_encountered = self.current_cycle_stats['errors_encountered']
+
+                    if details:
+                        session.performance_metrics = session.performance_metrics or {}
+                        session.performance_metrics.update(details)
+
+                    self.db_session.commit()
+                    logger.debug(f"Updated session {self.session_id} progress: {status}")
+            except Exception as e:
+                logger.error(f"Error updating progress: {str(e)}")
+
+        # Call progress callback if set
+        if self.progress_callback:
+            try:
+                self.progress_callback({
+                    'session_id': self.session_id,
+                    'status': status,
+                    'stats': self.current_cycle_stats.copy(),
+                    'details': details
+                })
+            except Exception as e:
+                logger.error(f"Error in progress callback: {str(e)}")
+
     def run_monitoring_cycle(self):
         """Execute one complete monitoring cycle."""
         cycle_start = time.time()
         logger.info("=" * 60)
         logger.info("Starting optimized monitoring cycle")
 
+        # Reset cycle stats
+        self.current_cycle_stats = {
+            'articles_processed': 0,
+            'tweets_processed': 0,
+            'feeds_processed': 0,
+            'alerts_generated': 0,
+            'errors_encountered': 0
+        }
+
         # Pre-task hook
         task_id = self.swarm_hooks.pre_task("TGE monitoring cycle - news and Twitter scraping")
 
+        # Update progress: starting
+        self._update_progress('running', {'phase': 'starting', 'timestamp': datetime.now(timezone.utc).isoformat()})
+
         try:
             all_alerts = []
-            
+
+            # Update progress: scraping news
+            self._update_progress('running', {'phase': 'scraping_news', 'timestamp': datetime.now(timezone.utc).isoformat()})
+
             # Run scrapers in parallel
             with ThreadPoolExecutor(max_workers=2) as executor:
                 futures = []
-                
+
                 # News scraping
                 futures.append(executor.submit(self.news_scraper.fetch_all_articles, timeout=120))
-                
+
                 # Twitter monitoring
                 if self.twitter_monitor:
                     futures.append(executor.submit(self.twitter_monitor.fetch_all_tweets, timeout=60))
-                
+
                 # Process results
                 for i, future in enumerate(futures):
                     try:
                         if i == 0:  # News
                             articles = future.result()
                             logger.info(f"Fetched {len(articles)} news articles")
+
+                            # Update counters
+                            self.current_cycle_stats['articles_processed'] = len(articles)
                             self.metrics['news_articles_processed'] = len(articles)
+
+                            # Track feeds processed
+                            if hasattr(self.news_scraper, 'feed_stats'):
+                                self.current_cycle_stats['feeds_processed'] = len(self.news_scraper.feed_stats)
+
+                            # Update progress with article count
+                            self._update_progress('running', {
+                                'phase': 'processing_news',
+                                'articles_fetched': len(articles),
+                                'timestamp': datetime.now(timezone.utc).isoformat()
+                            })
+
                             news_alerts = self.process_alerts(articles, 'news')
                             all_alerts.extend(news_alerts)
+
+                            # Update progress: news processing complete
+                            self._update_progress('running', {
+                                'phase': 'news_complete',
+                                'news_alerts': len(news_alerts),
+                                'timestamp': datetime.now(timezone.utc).isoformat()
+                            })
+
                         else:  # Twitter
+                            # Update progress: scraping Twitter
+                            self._update_progress('running', {
+                                'phase': 'scraping_twitter',
+                                'timestamp': datetime.now(timezone.utc).isoformat()
+                            })
+
                             tweets = future.result()
                             logger.info(f"Fetched {len(tweets)} tweets")
+
+                            # Update counters
+                            self.current_cycle_stats['tweets_processed'] = len(tweets)
                             self.metrics['tweets_processed'] = len(tweets)
+
+                            # Update progress with tweet count
+                            self._update_progress('running', {
+                                'phase': 'processing_twitter',
+                                'tweets_fetched': len(tweets),
+                                'timestamp': datetime.now(timezone.utc).isoformat()
+                            })
+
                             twitter_alerts = self.process_alerts(tweets, 'twitter')
                             all_alerts.extend(twitter_alerts)
+
+                            # Update progress: Twitter processing complete
+                            self._update_progress('running', {
+                                'phase': 'twitter_complete',
+                                'twitter_alerts': len(twitter_alerts),
+                                'timestamp': datetime.now(timezone.utc).isoformat()
+                            })
+
                     except Exception as e:
                         logger.error(f"Error in scraper {i}: {str(e)}")
+                        self.current_cycle_stats['errors_encountered'] += 1
+                        self._update_progress('running', {
+                            'phase': 'error',
+                            'error': str(e),
+                            'timestamp': datetime.now(timezone.utc).isoformat()
+                        })
+
+            # Update progress: updating feed statistics
+            self._update_progress('running', {'phase': 'updating_feeds', 'timestamp': datetime.now(timezone.utc).isoformat()})
 
             # ALWAYS update feed statistics (even if no alerts found)
             self.update_feed_statistics()
             logger.info("Updated feed statistics in database")
 
+            # Update progress: processing alerts
+            self._update_progress('running', {
+                'phase': 'processing_alerts',
+                'total_alerts': len(all_alerts),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            })
+
             # Send alerts if any
             if all_alerts:
                 logger.info(f"Sending {len(all_alerts)} TGE alerts")
+
+                # Update alerts counter
+                self.current_cycle_stats['alerts_generated'] = len(all_alerts)
 
                 # Group by confidence tier
                 high_confidence = [a for a in all_alerts if a['confidence'] >= 0.7]
                 medium_confidence = [a for a in all_alerts if 0.4 <= a['confidence'] < 0.7]
 
+                # Update progress: saving alerts
+                self._update_progress('running', {
+                    'phase': 'saving_alerts',
+                    'alerts_to_save': len(all_alerts),
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                })
+
                 # Save alerts to database
                 saved_count = self.save_alerts_to_database(all_alerts)
                 logger.info(f"Saved {saved_count} alerts to database")
+
+                # Update progress: sending email
+                self._update_progress('running', {
+                    'phase': 'sending_email',
+                    'alerts_saved': saved_count,
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                })
 
                 # Send email
                 success = self.email_notifier.send_tge_alerts(
@@ -605,9 +754,20 @@ class OptimizedCryptoTGEMonitor:
                 'cycle_time': cycle_time,
                 'alerts_found': len(all_alerts),
                 'high_confidence_alerts': len([a for a in all_alerts if a['confidence'] >= 0.7]),
-                'news_articles_processed': self.metrics.get('news_articles_processed', 0),
-                'tweets_processed': self.metrics.get('tweets_processed', 0)
+                'news_articles_processed': self.current_cycle_stats['articles_processed'],
+                'tweets_processed': self.current_cycle_stats['tweets_processed'],
+                'feeds_processed': self.current_cycle_stats['feeds_processed'],
+                'alerts_generated': self.current_cycle_stats['alerts_generated'],
+                'errors_encountered': self.current_cycle_stats['errors_encountered']
             }
+
+            # Update progress: completed
+            self._update_progress('completed', {
+                'phase': 'completed',
+                'cycle_time': cycle_time,
+                'total_alerts': len(all_alerts),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            })
 
             # Post-task hook (successful)
             self.swarm_hooks.post_task(task_id, status='completed', metrics=cycle_metrics)

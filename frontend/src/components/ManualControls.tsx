@@ -18,6 +18,8 @@ export default function ManualControls() {
   const [currentStep, setCurrentStep] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [scrapingStats, setScrapingStats] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [realTimeMetrics, setRealTimeMetrics] = useState<any>(null);
 
   const steps: ProgressStep[] = [
     { id: 'init', label: 'Initializing scraping cycle', status: 'pending', progress: 0 },
@@ -41,99 +43,89 @@ export default function ManualControls() {
     };
   }, [isScrapingActive]);
 
-  // Simulate progress updates and poll for completion
+  // Real-time progress polling using backend session tracking
   useEffect(() => {
-    if (!isScrapingActive) return;
+    if (!isScrapingActive || !sessionId) return;
 
-    let initialAlertCount = 0;
-
-    // Get initial alert count
-    apiClient.getStatistics().then(stats => {
-      initialAlertCount = stats.total_alerts;
-    }).catch(() => {
-      initialAlertCount = 0;
-    });
-
-    const progressInterval = setInterval(() => {
-      setScrapingProgress((prev) => {
-        const newProgress = Math.min(prev + 0.45, 95); // Cap at 95% until we get real completion
-        // This reaches 95% in approximately 105 seconds (1 minute 45 seconds)
-
-        // Update current step based on progress
-        if (newProgress < 10) setCurrentStep(0);
-        else if (newProgress < 30) setCurrentStep(1);
-        else if (newProgress < 50) setCurrentStep(2);
-        else if (newProgress < 70) setCurrentStep(3);
-        else if (newProgress < 90) setCurrentStep(4);
-        else setCurrentStep(5);
-
-        return newProgress;
-      });
-    }, 500);
-
-    // Poll for new alerts every 5 seconds
-    const pollInterval = setInterval(async () => {
+    const pollProgress = async () => {
       try {
-        const stats = await apiClient.getStatistics();
-        // Check if new alerts were added
-        if (stats.total_alerts > initialAlertCount) {
-          const newAlerts = stats.total_alerts - initialAlertCount;
-          completeScrapingProcess(newAlerts);
+        const progress = await apiClient.getSessionProgress(sessionId);
+
+        // Update progress percentage from backend
+        setScrapingProgress(progress.progress_percentage);
+
+        // Update real-time metrics
+        setRealTimeMetrics(progress.metrics);
+
+        // Map phase to step index
+        const phaseToStep: Record<string, number> = {
+          'starting': 0,
+          'scraping_news': 1,
+          'processing_news': 1,
+          'news_complete': 2,
+          'scraping_twitter': 2,
+          'processing_twitter': 3,
+          'twitter_complete': 3,
+          'updating_feeds': 4,
+          'processing_alerts': 4,
+          'saving_alerts': 5,
+          'sending_email': 5,
+          'completed': 5
+        };
+
+        const currentPhase = progress.current_phase || 'starting';
+        setCurrentStep(phaseToStep[currentPhase] || 0);
+
+        // Check if completed
+        if (progress.status === 'completed') {
+          completeScrapingProcess(progress.metrics?.alerts_generated || 0);
+        } else if (progress.status === 'failed') {
+          setIsScrapingActive(false);
+          setScrapingResult(`Error: Scraping cycle failed. Check logs for details.`);
+          setTimeout(() => {
+            setScrapingResult(null);
+            resetScrapingState();
+          }, 10000);
         }
       } catch (error) {
-        console.error('Error polling for completion:', error);
+        console.error('Error polling progress:', error);
       }
-    }, 5000);
+    };
 
-    // Auto-complete after max time (105 seconds to match progress bar)
-    const completionTimeout = setTimeout(() => {
-      completeScrapingProcess(0);
-    }, 105000); // 1 minute 45 seconds max
+    // Poll every 2 seconds for real-time updates
+    const pollInterval = setInterval(pollProgress, 2000);
+
+    // Initial poll
+    pollProgress();
 
     return () => {
-      clearInterval(progressInterval);
       clearInterval(pollInterval);
-      clearTimeout(completionTimeout);
     };
-  }, [isScrapingActive]);
+  }, [isScrapingActive, sessionId]);
 
   const completeScrapingProcess = async (alertsFound: number = 0) => {
     setScrapingProgress(100);
     setCurrentStep(5);
     setIsScrapingActive(false);
 
-    // Force refetch ALL queries (active and inactive) to update dashboard immediately
-    await queryClient.invalidateQueries({
-      queryKey: ['statistics'],
-      refetchType: 'all'  // Refetch even if component is not mounted
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ['feeds'],
-      refetchType: 'all'
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ['alerts'],
-      refetchType: 'all'
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ['companies'],
-      refetchType: 'all'
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ['health'],
-      refetchType: 'all'
-    });
+    // Parallel invalidation for faster updates
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['statistics'], refetchType: 'all' }),
+      queryClient.invalidateQueries({ queryKey: ['feeds'], refetchType: 'all' }),
+      queryClient.invalidateQueries({ queryKey: ['alerts'], refetchType: 'all' }),
+      queryClient.invalidateQueries({ queryKey: ['companies'], refetchType: 'all' }),
+      queryClient.invalidateQueries({ queryKey: ['health'], refetchType: 'all' })
+    ]);
 
-    // Fetch REAL statistics from the database
+    // Display real-time metrics from backend
     try {
       const stats = await apiClient.getStatistics();
 
-      // Show detailed data from the scraping cycle
       setScrapingStats({
-        articlesScanned: 0, // Will be updated when backend sends this
-        tweetsAnalyzed: 0,  // Will be updated when backend sends this
-        alertsGenerated: alertsFound > 0 ? alertsFound : stats.alerts_last_24h,
-        feedsProcessed: stats.total_feeds,
+        articlesScanned: realTimeMetrics?.articles_processed || 0,
+        tweetsAnalyzed: realTimeMetrics?.tweets_processed || 0,
+        alertsGenerated: alertsFound,
+        feedsProcessed: realTimeMetrics?.feeds_processed || 0,
         activeFeedsChecked: stats.active_feeds,
         duration: elapsedTime,
       });
@@ -148,16 +140,10 @@ export default function ManualControls() {
       setScrapingResult('Scraping completed but unable to fetch results.');
     }
 
-    // Additional delayed refetch to catch any feed statistics that update after scraping
-    setTimeout(async () => {
-      await queryClient.refetchQueries({ queryKey: ['feeds'], type: 'all' });
-      await queryClient.refetchQueries({ queryKey: ['statistics'], type: 'all' });
-    }, 3000); // Refetch again after 3 seconds
-
     setTimeout(() => {
       setScrapingResult(null);
       resetScrapingState();
-    }, 15000); // Increased to 15 seconds so user can see the results
+    }, 15000);
   };
 
   const resetScrapingState = () => {
@@ -176,12 +162,14 @@ export default function ManualControls() {
   // Trigger scraping mutation
   const scrapingMutation = useMutation({
     mutationFn: () => apiClient.triggerScraping(),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setSessionId(data.session_id);
       setIsScrapingActive(true);
       setScrapingProgress(5);
       setElapsedTime(0);
       setScrapingStats(null);
       setScrapingResult(null);
+      setRealTimeMetrics(null);
     },
     onError: (error: any) => {
       setIsScrapingActive(false);
@@ -348,10 +336,29 @@ export default function ManualControls() {
                 })}
               </div>
 
-              {/* Estimated completion */}
-              <div className="text-center text-xs text-gray-400 pt-2 border-t border-dark-700">
-                <p>Estimated time: ~1 minute 45 seconds</p>
-              </div>
+              {/* Real-time metrics during scraping */}
+              {realTimeMetrics && (
+                <div className="text-center text-xs text-gray-400 pt-2 border-t border-dark-700">
+                  <div className="grid grid-cols-4 gap-2 mb-1">
+                    <div>
+                      <div className="text-gray-500">Articles</div>
+                      <div className="text-green-400 font-medium">{realTimeMetrics.articles_processed}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Tweets</div>
+                      <div className="text-cyan-400 font-medium">{realTimeMetrics.tweets_processed}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Feeds</div>
+                      <div className="text-blue-400 font-medium">{realTimeMetrics.feeds_processed}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Alerts</div>
+                      <div className="text-primary-400 font-medium">{realTimeMetrics.alerts_generated}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -363,25 +370,21 @@ export default function ManualControls() {
               </h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
+                  <div className="text-gray-400 text-xs mb-1">Articles Scanned</div>
+                  <div className="text-green-400 font-bold text-lg">{scrapingStats.articlesScanned}</div>
+                </div>
+                <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
+                  <div className="text-gray-400 text-xs mb-1">Tweets Analyzed</div>
+                  <div className="text-cyan-400 font-bold text-lg">{scrapingStats.tweetsAnalyzed}</div>
+                </div>
+                <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
                   <div className="text-gray-400 text-xs mb-1">Alerts Generated</div>
                   <div className="text-primary-400 font-bold text-lg">{scrapingStats.alertsGenerated}</div>
                 </div>
                 <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
-                  <div className="text-gray-400 text-xs mb-1">Feeds Checked</div>
-                  <div className="text-blue-400 font-bold text-lg">{scrapingStats.activeFeedsChecked || 0}</div>
+                  <div className="text-gray-400 text-xs mb-1">Feeds Processed</div>
+                  <div className="text-blue-400 font-bold text-lg">{scrapingStats.feedsProcessed || 0}</div>
                 </div>
-                {scrapingStats.articlesScanned > 0 && (
-                  <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
-                    <div className="text-gray-400 text-xs mb-1">Articles Scanned</div>
-                    <div className="text-purple-400 font-bold text-lg">{scrapingStats.articlesScanned}</div>
-                  </div>
-                )}
-                {scrapingStats.tweetsAnalyzed > 0 && (
-                  <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
-                    <div className="text-gray-400 text-xs mb-1">Tweets Analyzed</div>
-                    <div className="text-cyan-400 font-bold text-lg">{scrapingStats.tweetsAnalyzed}</div>
-                  </div>
-                )}
               </div>
               <div className="mt-3 text-center">
                 <div className="text-xs text-gray-400">

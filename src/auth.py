@@ -352,11 +352,23 @@ def check_rate_limit(key: str, limit: int = 100, window: int = 3600):
 def create_admin_user_if_not_exists(db: Session):
     """Create default admin user if no admin exists"""
     admin_user = db.query(User).filter(User.is_admin == True).first()
-    
+
     if not admin_user:
         admin_username = os.getenv("ADMIN_USERNAME", "admin")
         admin_email = os.getenv("ADMIN_EMAIL", "admin@tgemonitor.local")
-        admin_password = os.getenv("ADMIN_PASSWORD", "admin123456")
+        # SECURITY: ADMIN_PASSWORD environment variable is REQUIRED for production
+        # No default password is provided for security reasons
+        admin_password = os.getenv("ADMIN_PASSWORD")
+
+        if not admin_password:
+            # Generate a secure random password and log it for first-time setup
+            admin_password = secrets.token_urlsafe(16)
+            print("=" * 80)
+            print("IMPORTANT: Auto-generated admin password (save this immediately):")
+            print(f"  Username: {admin_username}")
+            print(f"  Password: {admin_password}")
+            print("=" * 80)
+            print("Set ADMIN_PASSWORD environment variable to use a custom password.")
         
         try:
             admin_user = create_user(
