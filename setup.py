@@ -24,7 +24,7 @@ setup(
         "starlette>=0.28.0",
         "httpx>=0.25.0",
         "uvicorn>=0.25.0",
-        "pydantic==2.5.0",
+        "pydantic>=2.10.0",
         "email-validator>=2.0.0",
         "sqlalchemy==2.0.23",
         "alembic==1.13.0",
