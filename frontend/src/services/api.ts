@@ -161,6 +161,12 @@ class APIClient {
     const response = await this.client.post('/api/v1/monitoring/email-summary');
     return response.data;
   }
+
+  // Seed data
+  async seedData(): Promise<any> {
+    const response = await this.client.post('/seed-data');
+    return response.data;
+  }
 }
 
 export const apiClient = new APIClient();

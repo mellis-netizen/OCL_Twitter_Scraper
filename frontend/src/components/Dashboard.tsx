@@ -1,8 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../services/api';
 import type { SystemStatistics, HealthCheck } from '../types/api';
 
 export default function Dashboard() {
+  const [seedResult, setSeedResult] = useState<any>(null);
+  const queryClient = useQueryClient();
+
   // Fetch system statistics
   const { data: stats, isLoading: statsLoading } = useQuery<SystemStatistics>({
     queryKey: ['statistics'],
@@ -15,6 +19,21 @@ export default function Dashboard() {
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
     refetchInterval: 10000, // Refetch every 10 seconds
+  });
+
+  // Seed data mutation
+  const seedMutation = useMutation({
+    mutationFn: () => apiClient.seedData(),
+    onSuccess: (data) => {
+      setSeedResult(data);
+      // Refresh statistics
+      queryClient.invalidateQueries({ queryKey: ['statistics'] });
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['feeds'] });
+    },
+    onError: (error: any) => {
+      setSeedResult({ success: false, error: error.message });
+    }
   });
 
   if (statsLoading) {
@@ -255,6 +274,51 @@ export default function Dashboard() {
             <div className="text-2xl mb-2">⚙️</div>
             <div className="text-sm text-gray-300">System Controls</div>
           </button>
+        </div>
+      </div>
+
+      {/* Seed Data Section */}
+      <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
+        <h3 className="text-xl font-semibold text-white mb-4">Initialize Database</h3>
+        <div className="space-y-4">
+          <p className="text-gray-400 text-sm">
+            Load companies and news feeds from config.py. This will populate your database with
+            15 companies and all configured news sources/Twitter accounts.
+          </p>
+          <button
+            onClick={() => seedMutation.mutate()}
+            disabled={seedMutation.isPending}
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+          >
+            {seedMutation.isPending ? '🔄 Loading Data...' : '📥 Load Config Data'}
+          </button>
+
+          {/* Seed Result */}
+          {seedResult && (
+            <div className={`p-4 rounded-lg border ${
+              seedResult.success
+                ? 'bg-green-900 bg-opacity-20 border-green-700'
+                : 'bg-red-900 bg-opacity-20 border-red-700'
+            }`}>
+              <div className="space-y-2">
+                <div className="font-semibold text-white">
+                  {seedResult.success ? '✅ Data Loaded Successfully!' : '❌ Error Loading Data'}
+                </div>
+                {seedResult.success && (
+                  <div className="text-sm text-gray-300 space-y-1">
+                    <div>Companies: {seedResult.companies.added} added, {seedResult.companies.skipped} skipped</div>
+                    <div>Feeds: {seedResult.feeds.added} added, {seedResult.feeds.skipped} skipped</div>
+                    <div className="text-green-400 font-medium mt-2">
+                      Total: {seedResult.summary.total_added} items added to database
+                    </div>
+                  </div>
+                )}
+                {seedResult.error && (
+                  <div className="text-sm text-red-300">{seedResult.error}</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

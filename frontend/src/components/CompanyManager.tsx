@@ -56,7 +56,7 @@ export default function CompanyManager() {
     formState: { errors },
   } = useForm<CompanyFormData>({
     resolver: zodResolver(companySchema),
-    defaultValues: editingCompany || {
+    defaultValues: {
       priority: 'MEDIUM',
       status: 'active',
       aliases: [],
@@ -84,11 +84,17 @@ export default function CompanyManager() {
   const handleEdit = (company: Company) => {
     setEditingCompany(company);
     setIsFormOpen(true);
+    // Format arrays as comma-separated strings for the form
     reset({
-      ...company,
-      aliases: company.aliases as any,
-      tokens: company.tokens as any,
-      exclusions: company.exclusions as any,
+      name: company.name,
+      priority: company.priority,
+      status: company.status,
+      website: company.website || '',
+      twitter_handle: company.twitter_handle || '',
+      description: company.description || '',
+      aliases: formatArrayOutput(company.aliases) as any,
+      tokens: formatArrayOutput(company.tokens) as any,
+      exclusions: formatArrayOutput(company.exclusions) as any,
     });
   };
 
@@ -147,7 +153,6 @@ export default function CompanyManager() {
                   {...register('aliases')}
                   className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Caldera Labs, Caldera Protocol"
-                  defaultValue={editingCompany ? formatArrayOutput(editingCompany.aliases) : ''}
                 />
               </div>
 
@@ -159,7 +164,6 @@ export default function CompanyManager() {
                   {...register('tokens')}
                   className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., CAL, CALDERA"
-                  defaultValue={editingCompany ? formatArrayOutput(editingCompany.tokens) : ''}
                 />
               </div>
 
@@ -238,7 +242,6 @@ export default function CompanyManager() {
                   {...register('exclusions')}
                   className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., testnet, game"
-                  defaultValue={editingCompany ? formatArrayOutput(editingCompany.exclusions) : ''}
                 />
               </div>
 

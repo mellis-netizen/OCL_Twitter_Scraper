@@ -32,6 +32,7 @@ from .auth import (
     get_current_user, get_current_active_user, get_current_admin_user,
     optional_user, check_rate_limit, create_admin_user_if_not_exists
 )
+from .seed_data import seed_all_data
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -581,20 +582,20 @@ async def get_system_statistics(
     total_feeds = db.query(Feed).count()
     active_feeds = db.query(Feed).filter(Feed.is_active == True).count()
     total_alerts = db.query(Alert).count()
-    
+
     # Recent alerts
     alerts_last_24h = db.query(Alert).filter(
         Alert.created_at >= datetime.now(timezone.utc) - timedelta(hours=24)
     ).count()
-    
+
     alerts_last_7d = db.query(Alert).filter(
         Alert.created_at >= datetime.now(timezone.utc) - timedelta(days=7)
     ).count()
-    
+
     # Average confidence
     avg_confidence_result = db.query(func.avg(Alert.confidence)).scalar()
     avg_confidence = float(avg_confidence_result) if avg_confidence_result else 0.0
-    
+
     return SystemStatistics(
         total_companies=total_companies,
         total_feeds=total_feeds,
@@ -606,6 +607,21 @@ async def get_system_statistics(
         system_uptime=0.0,  # TODO: Implement uptime tracking
         last_monitoring_session=None  # TODO: Implement session tracking
     )
+
+
+# Seed data endpoint
+@app.post("/seed-data")
+async def seed_database():
+    """Seed database with initial data from config.py (public access)"""
+    try:
+        result = seed_all_data()
+        return result
+    except Exception as e:
+        logger.error(f"Error seeding data: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to seed data: {str(e)}"
+        )
 
 
 # WebSocket endpoint for real-time updates
