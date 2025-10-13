@@ -37,14 +37,13 @@ class APIClient {
       this.setAuthToken(this.token);
     }
 
-    // Response interceptor for error handling
+    // Response interceptor for error handling (public access mode - no redirect on 401)
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError<APIError>) => {
+        // Public access mode - just log errors, don't redirect
         if (error.response?.status === 401) {
-          // Token expired or invalid
-          this.clearAuth();
-          window.location.href = '/login';
+          console.warn('API returned 401 - Backend may require authentication to be disabled');
         }
         return Promise.reject(error);
       }

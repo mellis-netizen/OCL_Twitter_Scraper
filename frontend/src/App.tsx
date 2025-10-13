@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useAuth } from './hooks/useAuth';
-import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AlertDashboard from './components/AlertDashboard';
 import CompanyManager from './components/CompanyManager';
@@ -10,12 +8,9 @@ import ManualControls from './components/ManualControls';
 type View = 'dashboard' | 'alerts' | 'companies' | 'feeds' | 'controls';
 
 function App() {
-  const { isAuthenticated, user, logout } = useAuth();
   const [currentView, setCurrentView] = useState<View>('dashboard');
 
-  if (!isAuthenticated) {
-    return <Login />;
-  }
+  // Authentication removed - public access enabled
 
   const navigationItems: { id: View; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -41,19 +36,8 @@ function App() {
 
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-400">
-                Welcome, <span className="text-white font-medium">{user?.username}</span>
-                {user?.is_admin && (
-                  <span className="ml-2 px-2 py-0.5 bg-primary-900 text-primary-200 rounded text-xs">
-                    Admin
-                  </span>
-                )}
+                <span className="text-primary-400 font-medium">Public Access Mode</span>
               </div>
-              <button
-                onClick={logout}
-                className="px-4 py-2 bg-dark-700 text-gray-300 rounded-lg hover:bg-dark-600 transition-colors text-sm"
-              >
-                Logout
-              </button>
             </div>
           </div>
         </div>

@@ -1,6 +1,4 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../services/api';
 import wsClient from '../services/websocket';
 import type { User, LoginRequest, UserCreate } from '../types/api';
 
@@ -16,69 +14,52 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    () => !!localStorage.getItem('auth_token')
-  );
-  const queryClient = useQueryClient();
+  // Authentication disabled - always authenticated for public access
+  const [isAuthenticated] = useState<boolean>(true);
 
-  // Fetch current user if token exists
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => apiClient.getCurrentUser(),
-    enabled: isAuthenticated,
-    retry: false,
-  });
+  // Mock user data for public access
+  const user: User | null = {
+    id: 1,
+    username: 'public',
+    email: 'public@access.local',
+    is_admin: false,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  };
+  const isLoading = false;
 
-  // Login mutation
-  const loginMutation = useMutation({
-    mutationFn: (credentials: LoginRequest) => apiClient.login(credentials),
-    onSuccess: () => {
-      setIsAuthenticated(true);
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-    },
-  });
-
-  // Register mutation
-  const registerMutation = useMutation({
-    mutationFn: (data: UserCreate) => apiClient.register(data),
-  });
-
-  // Connect WebSocket when authenticated
+  // WebSocket connection without authentication
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        wsClient.connect(token, {
-          onConnect: () => console.log('WebSocket connected'),
-          onDisconnect: () => console.log('WebSocket disconnected'),
-        });
-      }
-    }
+    // Connect without token for public access
+    wsClient.connect('', {
+      onConnect: () => console.log('WebSocket connected (public mode)'),
+      onDisconnect: () => console.log('WebSocket disconnected'),
+    });
 
     return () => {
       wsClient.disconnect();
     };
-  }, [isAuthenticated, user]);
+  }, []);
 
-  const login = async (credentials: LoginRequest) => {
-    await loginMutation.mutateAsync(credentials);
+  const login = async (_credentials: LoginRequest) => {
+    // Authentication disabled - no-op
+    console.log('Login bypassed - public access mode');
   };
 
   const logout = () => {
-    apiClient.clearAuth();
-    wsClient.disconnect();
-    setIsAuthenticated(false);
-    queryClient.clear();
+    // Authentication disabled - no-op
+    console.log('Logout bypassed - public access mode');
   };
 
-  const register = async (data: UserCreate) => {
-    await registerMutation.mutateAsync(data);
+  const register = async (_data: UserCreate) => {
+    // Authentication disabled - no-op
+    console.log('Registration bypassed - public access mode');
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user: user || null,
+        user,
         isLoading,
         isAuthenticated,
         login,
