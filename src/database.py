@@ -27,7 +27,20 @@ REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 # SQLAlchemy setup with optimized connection pooling
 # Configure engine based on database type (PostgreSQL vs SQLite)
 if 'sqlite' in DATABASE_URL.lower():
-    # SQLite configuration (for testing)
+    logger.warning("=" * 80)
+    logger.warning("SQLite database detected")
+    logger.warning("SQLite is NOT recommended for production!")
+    logger.warning("Use PostgreSQL for production deployments")
+    logger.warning("=" * 80)
+
+    # Fail fast in production
+    if os.getenv('ENV', '').lower() == 'production':
+        raise RuntimeError(
+            "SQLite is not supported in production environments. "
+            "Please configure PostgreSQL via DATABASE_URL environment variable."
+        )
+
+    # SQLite configuration (for testing/development only)
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},

@@ -88,7 +88,7 @@ export default function ManualControls() {
           }, 10000);
         }
       } catch (error) {
-        console.error('Error polling progress:', error);
+        // Silently handle polling errors - will retry on next interval
       }
     };
 
@@ -136,7 +136,6 @@ export default function ManualControls() {
           : 'Scraping completed - no new TGE alerts found in this cycle.'
       );
     } catch (error) {
-      console.error('Error fetching real stats:', error);
       setScrapingResult('Scraping completed but unable to fetch results.');
     }
 

@@ -46,15 +46,23 @@ class AuthManager:
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash"""
-        # Bcrypt has a maximum password length of 72 bytes
-        # Apply same truncation as hash_password for consistency
         password_bytes = plain_password.encode('utf-8')[:72]
-        hashed_bytes = hashed_password.encode('utf-8')
 
         try:
+            hashed_bytes = hashed_password.encode('utf-8')
             return bcrypt.checkpw(password_bytes, hashed_bytes)
-        except Exception:
+        except ValueError as e:
+            # Invalid hash format - likely corrupted database entry
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Invalid password hash format: {e}")
             return False
+        except Exception as e:
+            # System error - log and re-raise
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Password verification system error: {e}", exc_info=True)
+            raise  # Don't mask system errors as auth failures
     
     @staticmethod
     def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -351,25 +359,37 @@ def check_rate_limit(key: str, limit: int = 100, window: int = 3600):
 # Utility functions
 def create_admin_user_if_not_exists(db: Session):
     """Create default admin user if no admin exists"""
+    import logging
+    logger = logging.getLogger(__name__)
+
     admin_user = db.query(User).filter(User.is_admin == True).first()
 
     if not admin_user:
         admin_username = os.getenv("ADMIN_USERNAME", "admin")
         admin_email = os.getenv("ADMIN_EMAIL", "admin@tgemonitor.local")
-        # SECURITY: ADMIN_PASSWORD environment variable is REQUIRED for production
-        # No default password is provided for security reasons
         admin_password = os.getenv("ADMIN_PASSWORD")
 
+        # SECURITY: ADMIN_PASSWORD is REQUIRED
         if not admin_password:
-            # Generate a secure random password and log it for first-time setup
-            admin_password = secrets.token_urlsafe(16)
-            print("=" * 80)
-            print("IMPORTANT: Auto-generated admin password (save this immediately):")
-            print(f"  Username: {admin_username}")
-            print(f"  Password: {admin_password}")
-            print("=" * 80)
-            print("Set ADMIN_PASSWORD environment variable to use a custom password.")
-        
+            logger.critical("=" * 80)
+            logger.critical("SECURITY: ADMIN_PASSWORD environment variable is REQUIRED")
+            logger.critical("Set it before starting the application:")
+            logger.critical("  export ADMIN_PASSWORD='your-secure-password'")
+            logger.critical("Or generate a secure one:")
+            logger.critical("  export ADMIN_PASSWORD=$(openssl rand -base64 32)")
+            logger.critical("=" * 80)
+            raise RuntimeError(
+                "ADMIN_PASSWORD environment variable is required for first-time setup. "
+                "Application will not start without it for security reasons."
+            )
+
+        # Validate password strength
+        if len(admin_password) < 12:
+            raise ValueError(
+                "ADMIN_PASSWORD must be at least 12 characters long. "
+                "Use: openssl rand -base64 32"
+            )
+
         try:
             admin_user = create_user(
                 db=db,
@@ -378,7 +398,7 @@ def create_admin_user_if_not_exists(db: Session):
                 password=admin_password,
                 is_admin=True
             )
-            print(f"Created admin user: {admin_username}")
+            logger.info(f"Created admin user: {admin_username}")
             return admin_user
         except HTTPException:
             # Admin user might already exist with different details
@@ -386,7 +406,7 @@ def create_admin_user_if_not_exists(db: Session):
             if existing_user:
                 existing_user.is_admin = True
                 db.commit()
-                print(f"Updated existing user {admin_username} to admin")
+                logger.info(f"Updated existing user {admin_username} to admin")
                 return existing_user
-    
+
     return admin_user

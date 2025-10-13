@@ -37,7 +37,7 @@ from .swarm_integration import SwarmCoordinationHooks
 
 # Import database models for saving alerts
 from .database import DatabaseManager
-from .models import Alert, Company, Feed
+from .models import Alert, Company, Feed, MonitoringSession
 
 # Configure logging
 def setup_logging():

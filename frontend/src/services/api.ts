@@ -41,10 +41,7 @@ class APIClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError<APIError>) => {
-        // Public access mode - just log errors, don't redirect
-        if (error.response?.status === 401) {
-          console.warn('API returned 401 - Backend may require authentication to be disabled');
-        }
+        // Public access mode - silently handle 401s
         return Promise.reject(error);
       }
     );

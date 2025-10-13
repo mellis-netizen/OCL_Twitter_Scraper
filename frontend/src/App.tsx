@@ -4,6 +4,7 @@ import AlertDashboard from './components/AlertDashboard';
 import CompanyManager from './components/CompanyManager';
 import FeedManager from './components/FeedManager';
 import ManualControls from './components/ManualControls';
+import ErrorBoundary from './components/ErrorBoundary';
 
 type View = 'dashboard' | 'alerts' | 'companies' | 'feeds' | 'controls';
 
@@ -21,7 +22,8 @@ function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
       {/* Header */}
       <header className="bg-dark-800 border-b border-dark-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -115,7 +117,8 @@ function App() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 

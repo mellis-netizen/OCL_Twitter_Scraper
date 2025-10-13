@@ -28,7 +28,6 @@ class WebSocketClient {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log('WebSocket connected');
         this.reconnectAttempts = 0;
         this.options.onConnect?.();
       };
@@ -38,21 +37,20 @@ class WebSocketClient {
           const message: WebSocketMessage = JSON.parse(event.data);
           this.handleMessage(message);
         } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          // Failed to parse message - skip silently
         }
       };
 
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+      this.ws.onerror = () => {
+        // WebSocket error occurred
       };
 
       this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
         this.options.onDisconnect?.();
         this.attemptReconnect(token);
       };
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      // Failed to create WebSocket connection
     }
   }
 
@@ -76,12 +74,10 @@ class WebSocketClient {
 
   private attemptReconnect(token: string) {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
       return;
     }
 
     this.reconnectAttempts++;
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 
     this.reconnectTimeout = window.setTimeout(() => {
       this.connect(token, this.options);

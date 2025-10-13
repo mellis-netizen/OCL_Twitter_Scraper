@@ -32,8 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Connect without token for public access
     wsClient.connect('', {
-      onConnect: () => console.log('WebSocket connected (public mode)'),
-      onDisconnect: () => console.log('WebSocket disconnected'),
+      onConnect: () => {}, // WebSocket connected in public mode
+      onDisconnect: () => {}, // WebSocket disconnected
     });
 
     return () => {
@@ -43,17 +43,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (_credentials: LoginRequest) => {
     // Authentication disabled - no-op
-    console.log('Login bypassed - public access mode');
   };
 
   const logout = () => {
     // Authentication disabled - no-op
-    console.log('Logout bypassed - public access mode');
   };
 
   const register = async (_data: UserCreate) => {
     // Authentication disabled - no-op
-    console.log('Registration bypassed - public access mode');
   };
 
   return (

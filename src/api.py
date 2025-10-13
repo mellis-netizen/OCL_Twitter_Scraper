@@ -90,8 +90,11 @@ class ConnectionManager:
         for connection in self.active_connections:
             try:
                 await connection.send_json(message)
-            except:
-                pass  # Connection might be closed
+            except (WebSocketDisconnect, ConnectionError) as e:
+                logger.debug(f"Connection closed during broadcast: {e}")
+                self.disconnect(connection)
+            except Exception as e:
+                logger.error(f"Unexpected error broadcasting message: {e}", exc_info=True)
     
     async def send_to_user(self, user_id: int, message: dict):
         """Send message to specific user"""
@@ -99,8 +102,11 @@ class ConnectionManager:
             for connection in self.user_connections[user_id]:
                 try:
                     await connection.send_json(message)
-                except:
-                    pass  # Connection might be closed
+                except (WebSocketDisconnect, ConnectionError) as e:
+                    logger.debug(f"Connection closed during user message: {e}")
+                    self.disconnect(connection, user_id)
+                except Exception as e:
+                    logger.error(f"Unexpected error sending to user: {e}", exc_info=True)
 
 
 manager = ConnectionManager()
@@ -694,27 +700,60 @@ async def get_alert_statistics(
     # Calculate date range
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
-    
+
     # Total alerts
     total_alerts = db.query(Alert).filter(Alert.created_at >= start_date).count()
-    
+
     # Alerts by source
     source_stats = db.query(
         Alert.source,
         func.count(Alert.id)
     ).filter(Alert.created_at >= start_date).group_by(Alert.source).all()
-    
     alerts_by_source = {source: count for source, count in source_stats}
-    
-    # Other statistics would be calculated similarly...
-    
+
+    # Alerts by confidence (group by 10% buckets)
+    confidence_stats = db.query(
+        func.floor(Alert.confidence * 10) / 10,
+        func.count(Alert.id)
+    ).filter(Alert.created_at >= start_date).group_by(
+        func.floor(Alert.confidence * 10) / 10
+    ).all()
+    alerts_by_confidence = {f"{int(conf*100)}%": count for conf, count in confidence_stats}
+
+    # Alerts by urgency
+    urgency_stats = db.query(
+        Alert.urgency_level,
+        func.count(Alert.id)
+    ).filter(Alert.created_at >= start_date).group_by(Alert.urgency_level).all()
+    alerts_by_urgency = {urgency or 'none': count for urgency, count in urgency_stats}
+
+    # Alerts by company
+    company_stats = db.query(
+        Company.name,
+        func.count(Alert.id)
+    ).join(Alert, Company.id == Alert.company_id).filter(
+        Alert.created_at >= start_date
+    ).group_by(Company.name).limit(20).all()
+    alerts_by_company = {company: count for company, count in company_stats}
+
+    # Recent trend (last 7 days)
+    recent_trend = {}
+    for i in range(min(days, 7)):
+        day = end_date - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
+        count = db.query(Alert).filter(
+            Alert.created_at.between(day_start, day_end)
+        ).count()
+        recent_trend[day.strftime("%Y-%m-%d")] = count
+
     return AlertStatistics(
         total_alerts=total_alerts,
         alerts_by_source=alerts_by_source,
-        alerts_by_confidence={},
-        alerts_by_urgency={},
-        alerts_by_company={},
-        recent_trend={}
+        alerts_by_confidence=alerts_by_confidence,
+        alerts_by_urgency=alerts_by_urgency,
+        alerts_by_company=alerts_by_company,
+        recent_trend=recent_trend
     )
 
 
@@ -742,6 +781,23 @@ async def get_system_statistics(
     avg_confidence_result = db.query(func.avg(Alert.confidence)).scalar()
     avg_confidence = float(avg_confidence_result) if avg_confidence_result else 0.0
 
+    # Get last monitoring session
+    last_session = db.query(MonitoringSession).order_by(
+        desc(MonitoringSession.start_time)
+    ).first()
+
+    # Calculate uptime from session history
+    total_sessions = db.query(MonitoringSession).count()
+    failed_sessions = db.query(MonitoringSession).filter(
+        MonitoringSession.status == 'failed'
+    ).count()
+
+    system_uptime = 100.0
+    if total_sessions > 0:
+        system_uptime = ((total_sessions - failed_sessions) / total_sessions) * 100
+
+    last_monitoring_session = last_session.start_time if last_session else None
+
     return SystemStatistics(
         total_companies=total_companies,
         total_feeds=total_feeds,
@@ -750,8 +806,8 @@ async def get_system_statistics(
         alerts_last_24h=alerts_last_24h,
         alerts_last_7d=alerts_last_7d,
         avg_confidence=avg_confidence,
-        system_uptime=100.0,  # Calculated from monitoring sessions or health checks
-        last_monitoring_session=None  # Future: Track last monitoring session timestamp
+        system_uptime=system_uptime,
+        last_monitoring_session=last_monitoring_session
     )
 
 
