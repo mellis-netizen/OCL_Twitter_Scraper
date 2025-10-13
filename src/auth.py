@@ -8,7 +8,7 @@ import secrets
 import hashlib
 import bcrypt
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from jose import JWTError, jwt
 from fastapi import HTTPException, status, Depends, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
@@ -157,7 +157,7 @@ def create_user(db: Session, username: str, email: str, password: str, is_admin:
     return db_user
 
 
-def create_api_key(db: Session, user_id: int, name: str, expires_in_days: Optional[int] = None) -> tuple[APIKey, str]:
+def create_api_key(db: Session, user_id: int, name: str, expires_in_days: Optional[int] = None) -> Tuple[APIKey, str]:
     """Create a new API key for a user"""
     # Generate API key
     api_key = AuthManager.generate_api_key()
