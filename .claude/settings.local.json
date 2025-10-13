@@ -22,7 +22,11 @@
       "WebSearch",
       "Bash(cat:*)",
       "Bash(pip3 install:*)",
-      "Bash(pip3 list:*)"
+      "Bash(pip3 list:*)",
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(xargs ls:*)",
+      "Bash(test:*)"
     ],
     "deny": []
   },
