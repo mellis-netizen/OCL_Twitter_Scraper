@@ -78,7 +78,12 @@ class OptimizedCryptoTGEMonitor:
             logger.info("Swarm coordination enabled for TGE monitor")
 
         self.email_notifier = EmailNotifier(EMAIL_CONFIG)
-        self.news_scraper = OptimizedNewsScraper(COMPANIES, TGE_KEYWORDS, NEWS_SOURCES)
+
+        # Load feed URLs from database instead of config.py
+        feed_urls = self._load_feeds_from_database()
+        logger.info(f"Loaded {len(feed_urls)} feeds from database")
+
+        self.news_scraper = OptimizedNewsScraper(COMPANIES, TGE_KEYWORDS, feed_urls)
 
         # Pass swarm hooks to scrapers
         if hasattr(self.news_scraper, 'set_swarm_hooks'):
@@ -139,6 +144,18 @@ class OptimizedCryptoTGEMonitor:
         except Exception as e:
             logger.error(f"Error saving state: {str(e)}")
     
+    def _load_feeds_from_database(self) -> List[str]:
+        """Load active feed URLs from database."""
+        try:
+            with DatabaseManager.get_session() as db:
+                feeds = db.query(Feed).filter(Feed.is_active == True).all()
+                feed_urls = [feed.url for feed in feeds]
+                logger.info(f"Loaded {len(feed_urls)} active feeds from database")
+                return feed_urls
+        except Exception as e:
+            logger.error(f"Error loading feeds from database: {str(e)}, falling back to config")
+            return NEWS_SOURCES
+
     def compile_matching_patterns(self):
         """Compile regex patterns for enhanced matching."""
         # Company patterns with word boundaries
