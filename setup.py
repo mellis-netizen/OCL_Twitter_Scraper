@@ -25,6 +25,7 @@ setup(
         "httpx>=0.25.0",
         "uvicorn>=0.25.0",
         "pydantic==2.5.0",
+        "email-validator>=2.0.0",
         "sqlalchemy==2.0.23",
         "alembic==1.13.0",
         "psycopg2-binary==2.9.9",
