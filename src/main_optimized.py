@@ -532,22 +532,22 @@ class OptimizedCryptoTGEMonitor:
                             all_alerts.extend(twitter_alerts)
                     except Exception as e:
                         logger.error(f"Error in scraper {i}: {str(e)}")
-            
+
+            # ALWAYS update feed statistics (even if no alerts found)
+            self.update_feed_statistics()
+            logger.info("Updated feed statistics in database")
+
             # Send alerts if any
             if all_alerts:
                 logger.info(f"Sending {len(all_alerts)} TGE alerts")
-                
+
                 # Group by confidence tier
                 high_confidence = [a for a in all_alerts if a['confidence'] >= 0.7]
                 medium_confidence = [a for a in all_alerts if 0.4 <= a['confidence'] < 0.7]
-                
+
                 # Save alerts to database
                 saved_count = self.save_alerts_to_database(all_alerts)
                 logger.info(f"Saved {saved_count} alerts to database")
-
-                # Update feed statistics in database
-                self.update_feed_statistics()
-                logger.info("Updated feed statistics in database")
 
                 # Send email
                 success = self.email_notifier.send_tge_alerts(
