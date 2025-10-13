@@ -122,14 +122,20 @@ class APIKeyResponse(BaseModel):
 class CompanyBase(BaseModel):
     """Base company schema"""
     name: str = Field(..., min_length=1, max_length=100)
-    aliases: Optional[List[str]] = None
-    tokens: Optional[List[str]] = None
+    aliases: List[str] = Field(default_factory=list)
+    tokens: List[str] = Field(default_factory=list)
     priority: Priority = Priority.MEDIUM
     status: str = "active"
     website: Optional[str] = None
     twitter_handle: Optional[str] = None
     description: Optional[str] = None
-    exclusions: Optional[List[str]] = None
+    exclusions: List[str] = Field(default_factory=list)
+
+    @field_validator('aliases', 'tokens', 'exclusions', mode='before')
+    @classmethod
+    def convert_none_to_list(cls, v):
+        """Convert None to empty list for database compatibility"""
+        return v if v is not None else []
 
 
 class CompanyCreate(CompanyBase):
@@ -298,7 +304,7 @@ class AlertFilter(BaseModel):
     status: Optional[AlertStatus] = None
     from_date: Optional[datetime] = None
     to_date: Optional[datetime] = None
-    keywords: Optional[List[str]] = None
+    keywords: List[str] = Field(default_factory=list)
     limit: int = Field(default=100, ge=1, le=1000)
     offset: int = Field(default=0, ge=0)
 
