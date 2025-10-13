@@ -1,0 +1,53 @@
+# Ignore frontend files for backend deployment
+frontend/
+frontend/*
+
+# Node modules
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+
+# Development files
+.git/
+.github/
+*.log
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env.local
+.env.*.local
+
+# Documentation (not needed for deployment)
+docs/
+*.md
+!README.md
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Frontend build artifacts
+*.map
+.cache/
