@@ -77,7 +77,7 @@ class OptimizedCryptoTGEMonitor:
             self.swarm_hooks.session_restore()
             logger.info("Swarm coordination enabled for TGE monitor")
 
-        self.email_notifier = EmailNotifier(EMAIL_CONFIG)
+        self.email_notifier = EmailNotifier()  # No config needed - reads EMAIL_CONFIG internally
 
         # Load feed URLs from database instead of config.py
         feed_urls = self._load_feeds_from_database()
