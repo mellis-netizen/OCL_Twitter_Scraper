@@ -85,7 +85,7 @@ export default function ManualControls() {
 
     // Auto-complete after max time (60 seconds)
     const completionTimeout = setTimeout(() => {
-      completeScrapingProcess(0, 0);
+      completeScrapingProcess(0);
     }, 60000); // 1 minute max
 
     return () => {
