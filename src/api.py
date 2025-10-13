@@ -873,19 +873,32 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
                     try:
                         # Get database session for real-time updates
                         db_session = DatabaseManager.SessionLocal()
+                        logger.info(f"Database session created for {session_id}")
+
+                        # Update progress IMMEDIATELY to show we started
+                        session = db_session.query(MonitoringSession).filter(
+                            MonitoringSession.session_id == session_id
+                        ).first()
+                        if session:
+                            session.performance_metrics = {'phase': 'initializing', 'timestamp': datetime.now(timezone.utc).isoformat()}
+                            db_session.commit()
+                            logger.info(f"Initial progress updated for {session_id}")
 
                         # Create monitor instance with session_id and db_session
-                        logger.info(f"Creating monitor for session {session_id}")
+                        logger.info(f"Creating monitor for session {session_id}...")
                         monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
+                        logger.info(f"Monitor instance created for {session_id}")
+
                         monitor.session_id = session_id
                         monitor.db_session = db_session
-                        logger.info(f"Monitor created, starting cycle for session {session_id}")
+                        logger.info(f"Monitor configured, starting cycle for session {session_id}")
 
                         # Run monitoring cycle (will update session in real-time)
                         monitor.run_monitoring_cycle()
                         cycle_completed.set()
+                        logger.info(f"Monitoring cycle completed for {session_id}")
                     except Exception as e:
-                        logger.error(f"Error in execute_cycle: {str(e)}", exc_info=True)
+                        logger.error(f"Error in execute_cycle for {session_id}: {str(e)}", exc_info=True)
                         raise
 
                 # Start cycle in thread
@@ -1056,7 +1069,11 @@ async def get_monitoring_session_progress(
             "errors_encountered": session.errors_encountered or 0
         },
         "performance_metrics": session.performance_metrics or {},
-        "error_log": session.error_log or []
+        "error_log": session.error_log or [],
+        "debug_info": {
+            "session_age_seconds": (datetime.now(timezone.utc) - session.start_time).total_seconds() if session.start_time else 0,
+            "has_performance_metrics": bool(session.performance_metrics)
+        }
     }
 
     return response
