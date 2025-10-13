@@ -35,7 +35,9 @@
       "Bash(for i in {1..4})",
       "Bash(done)",
       "Bash(timeout 30 git push origin main)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(open frontend/test-api-connection.html)"
     ],
     "deny": []
   },

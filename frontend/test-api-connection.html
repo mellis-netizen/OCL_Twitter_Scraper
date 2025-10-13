@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TGE Monitor - API Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #fff;
+        }
+        h1 { color: #3b82f6; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover { background: #2563eb; }
+        .result {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .success { border-color: #10b981; }
+        .error { border-color: #ef4444; }
+        pre {
+            background: #0a0a0a;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .status { font-size: 24px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 TGE Monitor API Connection Test</h1>
+    <p>This tests if your browser can connect to the Railway backend API.</p>
+
+    <div>
+        <button onclick="testConnection()">🧪 Test Connection</button>
+        <button onclick="testCompanies()">🏢 Test Companies (15 expected)</button>
+        <button onclick="testFeeds()">📰 Test Feeds (54 expected)</button>
+        <button onclick="testAll()">🚀 Test Everything</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'https://ocltwitterscraper-production.up.railway.app';
+
+        function showResult(title, status, message, data) {
+            const results = document.getElementById('results');
+            const statusEmoji = status === 'success' ? '✅' : '❌';
+            const statusClass = status === 'success' ? 'success' : 'error';
+
+            const html = `
+                <div class="result ${statusClass}">
+                    <div class="status">${statusEmoji} ${title}</div>
+                    <div><strong>Message:</strong> ${message}</div>
+                    ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+                </div>
+            `;
+
+            results.innerHTML = html + results.innerHTML;
+        }
+
+        async function testConnection() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(
+                        'Health Check',
+                        'success',
+                        `API is ${data.status}. Database: ${data.database ? '✅' : '❌'}, Redis: ${data.redis ? '✅' : '❌'}`,
+                        data
+                    );
+                } else {
+                    showResult('Health Check', 'error', `HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                showResult('Health Check', 'error', `Connection failed: ${error.message}`, null);
+            }
+        }
+
+        async function testCompanies() {
+            try {
+                const response = await fetch(`${API_URL}/companies`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(
+                        'Companies Test',
+                        'success',
+                        `Found ${data.length} companies (expected: 15)`,
+                        {
+                            total: data.length,
+                            first_three: data.slice(0, 3).map(c => ({ name: c.name, priority: c.priority }))
+                        }
+                    );
+                } else {
+                    showResult('Companies Test', 'error', `HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                showResult('Companies Test', 'error', `Failed to fetch: ${error.message}`, null);
+            }
+        }
+
+        async function testFeeds() {
+            try {
+                const response = await fetch(`${API_URL}/feeds?limit=100`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    const byType = data.reduce((acc, feed) => {
+                        acc[feed.type] = (acc[feed.type] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                    showResult(
+                        'Feeds Test',
+                        'success',
+                        `Found ${data.length} feeds (expected: 54)`,
+                        {
+                            total: data.length,
+                            by_type: byType,
+                            first_three: data.slice(0, 3).map(f => ({ name: f.name, type: f.type }))
+                        }
+                    );
+                } else {
+                    showResult('Feeds Test', 'error', `HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                showResult('Feeds Test', 'error', `Failed to fetch: ${error.message}`, null);
+            }
+        }
+
+        async function testAll() {
+            document.getElementById('results').innerHTML = '<div class="result"><div class="status">🔄 Running all tests...</div></div>';
+            await testConnection();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testCompanies();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testFeeds();
+        }
+
+        // Auto-run test on load
+        window.onload = () => {
+            testAll();
+        };
+    </script>
+</body>
+</html>
