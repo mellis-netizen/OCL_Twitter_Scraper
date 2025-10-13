@@ -16,18 +16,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 # Mock dependencies before importing database modules
 sys.modules['redis'] = MagicMock()
 sys.modules['psycopg2'] = MagicMock()
-sys.modules['email_validator'] = MagicMock()
 
-# Mock pydantic email validation
-with patch('pydantic.networks.import_email_validator', return_value=None):
-    # Import with try/except to handle import errors gracefully
-    try:
-        from src.database_service import DatabaseService, migrate_from_file_storage, db_service
-        from src.models import Company, Alert, Feed, MonitoringSession, SystemMetrics, User
-        from src.database import DatabaseManager, CacheManager
-    except ImportError as e:
-        import pytest
-        pytest.skip(f"Required modules not available: {e}", allow_module_level=True)
+# Import with try/except to handle import errors gracefully
+try:
+    from src.database_service import DatabaseService, migrate_from_file_storage, db_service
+    from src.models import Company, Alert, Feed, MonitoringSession, SystemMetrics, User
+    from src.database import DatabaseManager, CacheManager
+except ImportError as e:
+    import pytest
+    pytest.skip(f"Required modules not available: {e}", allow_module_level=True)
 
 
 class TestDatabaseServiceCompanyOperations(unittest.TestCase):

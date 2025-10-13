@@ -179,7 +179,9 @@ class TestNewsScraper(unittest.TestCase):
         is_relevant, confidence, info = scraper.analyze_content_relevance(content_with_exclusion)
 
         # Exclusion patterns should significantly reduce confidence
-        self.assertIn('exclusion_found', info['signals'])
+        # Check for any exclusion signal (e.g., 'exclusion:testnet', 'exclusion:game_token')
+        exclusion_signals = [s for s in info['signals'] if s.startswith('exclusion:')]
+        self.assertGreater(len(exclusion_signals), 0, "Expected exclusion signals in info['signals']")
         self.assertLess(confidence, 0.5)
 
     def test_proximity_matching(self):

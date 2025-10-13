@@ -219,7 +219,9 @@ class TestConfidenceScoring(unittest.TestCase):
         _, conf_excluded, info_excluded = self.scraper.analyze_content_relevance(with_exclusion)
 
         self.assertLess(conf_excluded, conf_normal)
-        self.assertIn('exclusion_found', info_excluded['signals'])
+        # Check for any exclusion signal (e.g., 'exclusion:testnet', 'exclusion:game_token')
+        exclusion_signals = [s for s in info_excluded['signals'] if s.startswith('exclusion:')]
+        self.assertGreater(len(exclusion_signals), 0, "Expected exclusion signals in info_excluded['signals']")
 
     def test_date_mention_bonus(self):
         """Test date mention increases confidence"""

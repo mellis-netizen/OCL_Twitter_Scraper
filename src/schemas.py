@@ -3,7 +3,7 @@ Pydantic schemas for TGE Monitor API
 Request/response models with validation
 """
 
-from pydantic import BaseModel, EmailStr, validator, Field
+from pydantic import BaseModel, EmailStr, field_validator, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -48,8 +48,9 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """User creation schema"""
     password: str = Field(..., min_length=8)
-    
-    @validator('password')
+
+    @field_validator('password')
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
@@ -121,14 +122,14 @@ class APIKeyResponse(BaseModel):
 class CompanyBase(BaseModel):
     """Base company schema"""
     name: str = Field(..., min_length=1, max_length=100)
-    aliases: Optional[List[str]] = []
-    tokens: Optional[List[str]] = []
+    aliases: Optional[List[str]] = None
+    tokens: Optional[List[str]] = None
     priority: Priority = Priority.MEDIUM
     status: str = "active"
     website: Optional[str] = None
     twitter_handle: Optional[str] = None
     description: Optional[str] = None
-    exclusions: Optional[List[str]] = []
+    exclusions: Optional[List[str]] = None
 
 
 class CompanyCreate(CompanyBase):
@@ -168,9 +169,9 @@ class AlertBase(BaseModel):
     source_url: Optional[str] = None
     confidence: float = Field(..., ge=0.0, le=1.0)
     company_id: Optional[int] = None
-    keywords_matched: Optional[List[str]] = []
-    tokens_mentioned: Optional[List[str]] = []
-    analysis_data: Optional[Dict[str, Any]] = {}
+    keywords_matched: Optional[List[str]] = None
+    tokens_mentioned: Optional[List[str]] = None
+    analysis_data: Optional[Dict[str, Any]] = None
     sentiment_score: Optional[float] = Field(None, ge=-1.0, le=1.0)
     urgency_level: UrgencyLevel = UrgencyLevel.MEDIUM
 
@@ -206,7 +207,7 @@ class FeedBase(BaseModel):
     name: str = Field(..., max_length=200)
     url: str = Field(..., max_length=1000)
     type: str = "rss"
-    priority: int = Field(3, ge=1, le=5)
+    priority: int = Field(default=3, ge=1, le=5)
     is_active: bool = True
 
 
@@ -269,7 +270,7 @@ class SystemMetricCreate(BaseModel):
     metric_name: str = Field(..., max_length=100)
     value: float
     unit: Optional[str] = Field(None, max_length=20)
-    tags: Optional[Dict[str, Any]] = {}
+    tags: Optional[Dict[str, Any]] = None
 
 
 class SystemMetricResponse(BaseModel):
@@ -297,9 +298,9 @@ class AlertFilter(BaseModel):
     status: Optional[AlertStatus] = None
     from_date: Optional[datetime] = None
     to_date: Optional[datetime] = None
-    keywords: Optional[List[str]] = []
-    limit: int = Field(100, ge=1, le=1000)
-    offset: int = Field(0, ge=0)
+    keywords: Optional[List[str]] = None
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
 
 
 class CompanyFilter(BaseModel):
@@ -307,8 +308,8 @@ class CompanyFilter(BaseModel):
     priority: Optional[Priority] = None
     status: Optional[str] = None
     has_tokens: Optional[bool] = None
-    limit: int = Field(100, ge=1, le=1000)
-    offset: int = Field(0, ge=0)
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
 
 
 # Statistics schemas
@@ -366,7 +367,7 @@ class BulkOperationResult(BaseModel):
     """Bulk operation result schema"""
     success_count: int
     error_count: int
-    errors: List[Dict[str, Any]] = []
+    errors: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # Health check schemas
@@ -383,7 +384,7 @@ class HealthCheck(BaseModel):
 # Export schemas
 class ExportRequest(BaseModel):
     """Data export request schema"""
-    format: str = Field("json", pattern="^(json|csv|xlsx)$")
+    format: str = Field(default="json", pattern="^(json|csv|xlsx)$")
     filters: Optional[AlertFilter] = None
     include_analysis: bool = False
 
