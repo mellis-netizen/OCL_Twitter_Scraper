@@ -27,7 +27,11 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <div className="text-2xl">🎯</div>
+              <img
+                src="https://avatars.githubusercontent.com/u/46778756?s=200&v=4"
+                alt="Offchain Labs"
+                className="w-10 h-10 rounded"
+              />
               <div>
                 <h1 className="text-xl font-bold text-white">TGE Monitor</h1>
                 <p className="text-xs text-gray-400">Token Generation Event Tracker</p>
@@ -35,9 +39,7 @@ function App() {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-400">
-                <span className="text-primary-400 font-medium">Public Access Mode</span>
-              </div>
+              {/* Removed Public Access Mode badge */}
             </div>
           </div>
         </div>
@@ -88,29 +90,6 @@ function App() {
                   Live
                 </span>
               </div>
-            </div>
-          </div>
-
-          {/* Quick Info */}
-          <div className="mt-4 p-4 bg-dark-700 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-300 mb-2">Quick Links</h3>
-            <div className="space-y-2 text-xs">
-              <a
-                href="/docs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-primary-400 hover:text-primary-300"
-              >
-                📚 API Documentation
-              </a>
-              <a
-                href="https://github.com/yourusername/tge-monitor"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-primary-400 hover:text-primary-300"
-              >
-                🔗 GitHub Repository
-              </a>
             </div>
           </div>
         </aside>
