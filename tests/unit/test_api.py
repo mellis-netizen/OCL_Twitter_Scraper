@@ -281,7 +281,7 @@ class TestAuthentication:
         assert response.status_code == 403
         assert "administrators" in response.json()["detail"].lower()
 
-    def test_register_as_admin(self, client: TestClient, admin_token: str, mock_cache):
+    def test_register_as_admin(self, client: TestClient, admin_token: str, admin_user: User, mock_cache):
         """Test admin can register new users"""
         response = client.post(
             "/auth/register",
