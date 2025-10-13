@@ -336,9 +336,9 @@ async def get_company(
 async def create_company(
     company_data: CompanyCreate,
     db: Session = Depends(DatabaseManager.get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: Optional[User] = Depends(optional_user)
 ):
-    """Create new company (admin only)"""
+    """Create new company (public access)"""
     # Check if company already exists
     existing = db.query(Company).filter(Company.name == company_data.name).first()
     if existing:
@@ -346,12 +346,12 @@ async def create_company(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Company already exists"
         )
-    
+
     company = Company(**company_data.dict())
     db.add(company)
     db.commit()
     db.refresh(company)
-    
+
     return CompanyResponse.from_orm(company)
 
 
@@ -360,24 +360,44 @@ async def update_company(
     company_id: int,
     company_update: CompanyUpdate,
     db: Session = Depends(DatabaseManager.get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: Optional[User] = Depends(optional_user)
 ):
-    """Update company (admin only)"""
+    """Update company (public access)"""
     company = db.query(Company).filter(Company.id == company_id).first()
     if not company:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Company not found"
         )
-    
+
     update_data = company_update.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(company, field, value)
-    
+
     db.commit()
     db.refresh(company)
 
     return CompanyResponse.from_orm(company)
+
+
+@app.delete("/companies/{company_id}")
+async def delete_company(
+    company_id: int,
+    db: Session = Depends(DatabaseManager.get_db),
+    current_user: Optional[User] = Depends(optional_user)
+):
+    """Delete company (public access)"""
+    company = db.query(Company).filter(Company.id == company_id).first()
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found"
+        )
+
+    db.delete(company)
+    db.commit()
+
+    return {"message": "Company deleted successfully"}
 
 
 # Feed endpoints
@@ -718,6 +738,76 @@ async def seed_database():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to seed data: {str(e)}"
+        )
+
+
+# Monitoring endpoints
+@app.post("/monitoring/trigger")
+async def trigger_monitoring_cycle():
+    """Trigger a manual monitoring cycle (public access)"""
+    try:
+        # Import here to avoid circular dependencies
+        from .main_optimized import OptimizedCryptoTGEMonitor
+        import uuid
+
+        # Generate session ID for this monitoring run
+        session_id = str(uuid.uuid4())
+
+        # Run monitoring cycle in background
+        def run_cycle():
+            try:
+                monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
+                monitor.run_monitoring_cycle()
+                logger.info(f"Monitoring cycle {session_id} completed successfully")
+            except Exception as e:
+                logger.error(f"Error in monitoring cycle {session_id}: {str(e)}")
+
+        # Start background thread
+        import threading
+        thread = threading.Thread(target=run_cycle, daemon=True)
+        thread.start()
+
+        return {
+            "message": "Monitoring cycle started successfully",
+            "session_id": session_id
+        }
+    except Exception as e:
+        logger.error(f"Error starting monitoring cycle: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start monitoring cycle: {str(e)}"
+        )
+
+
+@app.post("/monitoring/email-summary")
+async def send_email_summary():
+    """Send email summary of recent alerts (public access)"""
+    try:
+        # Import here to avoid circular dependencies
+        from .main_optimized import OptimizedCryptoTGEMonitor
+
+        # Run email summary in background
+        def send_summary():
+            try:
+                monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
+                monitor.send_weekly_summary()
+                logger.info("Email summary sent successfully")
+            except Exception as e:
+                logger.error(f"Error sending email summary: {str(e)}")
+
+        # Start background thread
+        import threading
+        thread = threading.Thread(target=send_summary, daemon=True)
+        thread.start()
+
+        return {
+            "message": "Email summary is being sent"
+        }
+    except Exception as e:
+        logger.error(f"Error sending email summary: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send email summary: {str(e)}"
         )
 
 
