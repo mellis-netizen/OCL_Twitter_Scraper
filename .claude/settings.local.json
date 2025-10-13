@@ -26,7 +26,8 @@
       "Bash(npm install)",
       "Bash(npm run build)",
       "Bash(xargs ls:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   },
