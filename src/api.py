@@ -746,9 +746,17 @@ async def seed_database():
 async def trigger_monitoring_cycle():
     """Trigger a manual monitoring cycle (public access)"""
     try:
-        # Import here to avoid circular dependencies
-        from .main_optimized import OptimizedCryptoTGEMonitor
         import uuid
+        import sys
+        from pathlib import Path
+
+        # Add parent directory to sys.path so config.py can be imported
+        project_root = Path(__file__).parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+
+        # Import the monitor after fixing sys.path
+        from .main_optimized import OptimizedCryptoTGEMonitor
 
         # Generate session ID for this monitoring run
         session_id = str(uuid.uuid4())
@@ -783,7 +791,15 @@ async def trigger_monitoring_cycle():
 async def send_email_summary():
     """Send email summary of recent alerts (public access)"""
     try:
-        # Import here to avoid circular dependencies
+        import sys
+        from pathlib import Path
+
+        # Add parent directory to sys.path so config.py can be imported
+        project_root = Path(__file__).parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+
+        # Import the monitor after fixing sys.path
         from .main_optimized import OptimizedCryptoTGEMonitor
 
         # Run email summary in background

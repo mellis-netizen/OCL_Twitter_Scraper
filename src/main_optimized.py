@@ -28,12 +28,12 @@ from config import (
 )
 
 # Import optimized modules
-from twitter_monitor_optimized import OptimizedTwitterMonitor
-from news_scraper_optimized import OptimizedNewsScraper
-from email_notifier import EmailNotifier
+from .twitter_monitor_optimized import OptimizedTwitterMonitor
+from .news_scraper_optimized import OptimizedNewsScraper
+from .email_notifier import EmailNotifier
 
 # Import swarm coordination
-from swarm_integration import SwarmCoordinationHooks
+from .swarm_integration import SwarmCoordinationHooks
 
 # Configure logging
 def setup_logging():
