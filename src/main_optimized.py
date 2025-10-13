@@ -66,6 +66,8 @@ class OptimizedCryptoTGEMonitor:
     """Enhanced TGE monitoring system with optimized detection capabilities."""
 
     def __init__(self, swarm_enabled: bool = None):
+        logger.info("Initializing CryptoTGEMonitor...")
+
         # Initialize swarm coordination
         self.swarm_hooks = SwarmCoordinationHooks(
             enabled=swarm_enabled if swarm_enabled is not None else SWARM_CONFIG['enabled'],
@@ -77,22 +79,28 @@ class OptimizedCryptoTGEMonitor:
             self.swarm_hooks.session_restore()
             logger.info("Swarm coordination enabled for TGE monitor")
 
+        logger.info("Initializing email notifier...")
         self.email_notifier = EmailNotifier()  # No config needed - reads EMAIL_CONFIG internally
 
         # Load feed URLs from database instead of config.py
+        logger.info("Loading feeds from database...")
         feed_urls = self._load_feeds_from_database()
         logger.info(f"Loaded {len(feed_urls)} feeds from database")
 
+        logger.info("Initializing news scraper...")
         self.news_scraper = OptimizedNewsScraper(COMPANIES, TGE_KEYWORDS, feed_urls)
+        logger.info("News scraper initialized")
 
         # Pass swarm hooks to scrapers
         if hasattr(self.news_scraper, 'set_swarm_hooks'):
             self.news_scraper.set_swarm_hooks(self.swarm_hooks)
 
         # Initialize Twitter monitor if configured
+        logger.info("Checking Twitter configuration...")
         self.twitter_monitor = None
         if TWITTER_CONFIG['bearer_token'] and not os.getenv('DISABLE_TWITTER'):
             try:
+                logger.info("Initializing Twitter monitor...")
                 self.twitter_monitor = OptimizedTwitterMonitor(
                     TWITTER_CONFIG['bearer_token'],
                     COMPANIES,
@@ -106,14 +114,19 @@ class OptimizedCryptoTGEMonitor:
                 logger.info("Twitter monitoring enabled with optimizations")
             except Exception as e:
                 logger.error(f"Failed to initialize Twitter monitor: {str(e)}")
+        else:
+            logger.info("Twitter monitoring disabled")
 
         # State management
+        logger.info("Loading monitor state...")
         self.state_file = 'state/monitor_state.json'
         self.state = self.load_state()
         self.running = False
 
         # Enhanced matching patterns
+        logger.info("Compiling matching patterns...")
         self.compile_matching_patterns()
+        logger.info("CryptoTGEMonitor initialization complete")
 
         # Performance tracking
         self.metrics = defaultdict(int)
