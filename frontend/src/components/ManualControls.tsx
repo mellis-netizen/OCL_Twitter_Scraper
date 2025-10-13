@@ -83,10 +83,10 @@ export default function ManualControls() {
       }
     }, 5000);
 
-    // Auto-complete after max time (60 seconds)
+    // Auto-complete after max time (120 seconds - give scraping time to actually run)
     const completionTimeout = setTimeout(() => {
       completeScrapingProcess(0);
-    }, 60000); // 1 minute max
+    }, 120000); // 2 minutes max
 
     return () => {
       clearInterval(progressInterval);
@@ -95,36 +95,38 @@ export default function ManualControls() {
     };
   }, [isScrapingActive]);
 
-  const completeScrapingProcess = (alertsFound: number = 0) => {
+  const completeScrapingProcess = async (alertsFound: number = 0) => {
     setScrapingProgress(100);
     setCurrentStep(5);
     setIsScrapingActive(false);
 
-    // Use real or simulated statistics
-    if (alertsFound > 0) {
+    // Fetch REAL statistics from the database
+    try {
+      const stats = await apiClient.getStatistics();
+
+      // Show ONLY real data - no fake/simulated numbers
       setScrapingStats({
-        articlesScanned: Math.floor(Math.random() * 50) + 20,
-        tweetsAnalyzed: Math.floor(Math.random() * 100) + 50,
-        alertsGenerated: alertsFound,
-        highConfidence: Math.floor(alertsFound * 0.6),
+        articlesScanned: 0, // Backend doesn't track this yet
+        tweetsAnalyzed: 0,  // Backend doesn't track this yet
+        alertsGenerated: alertsFound > 0 ? alertsFound : stats.alerts_last_24h,
+        highConfidence: 0,  // Backend doesn't track this yet
         duration: elapsedTime,
       });
-    } else {
-      // No alerts found - show completion anyway
-      setScrapingStats({
-        articlesScanned: Math.floor(Math.random() * 50) + 20,
-        tweetsAnalyzed: Math.floor(Math.random() * 100) + 50,
-        alertsGenerated: 0,
-        highConfidence: 0,
-        duration: elapsedTime,
-      });
+
+      setScrapingResult(
+        alertsFound > 0
+          ? `Scraping completed! Found ${alertsFound} new alerts.`
+          : 'Scraping completed - no new TGE alerts found in this cycle.'
+      );
+    } catch (error) {
+      console.error('Error fetching real stats:', error);
+      setScrapingResult('Scraping completed but unable to fetch results.');
     }
 
-    setScrapingResult(alertsFound > 0 ? 'Scraping completed successfully!' : 'Scraping completed - no TGE alerts found');
     setTimeout(() => {
       setScrapingResult(null);
       resetScrapingState();
-    }, 10000); // Show results for 10 seconds
+    }, 10000);
   };
 
   const resetScrapingState = () => {
@@ -328,22 +330,11 @@ export default function ManualControls() {
               <h4 className="text-green-300 font-semibold mb-3 flex items-center gap-2">
                 ✅ Scraping Complete!
               </h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="bg-dark-800 bg-opacity-50 p-3 rounded">
-                  <div className="text-gray-400 text-xs mb-1">Articles Scanned</div>
-                  <div className="text-white font-bold text-lg">{scrapingStats.articlesScanned}</div>
-                </div>
-                <div className="bg-dark-800 bg-opacity-50 p-3 rounded">
-                  <div className="text-gray-400 text-xs mb-1">Tweets Analyzed</div>
-                  <div className="text-white font-bold text-lg">{scrapingStats.tweetsAnalyzed}</div>
-                </div>
+              <div className="grid grid-cols-1 gap-3 text-sm">
                 <div className="bg-dark-800 bg-opacity-50 p-3 rounded">
                   <div className="text-gray-400 text-xs mb-1">Alerts Generated</div>
                   <div className="text-primary-400 font-bold text-lg">{scrapingStats.alertsGenerated}</div>
-                </div>
-                <div className="bg-dark-800 bg-opacity-50 p-3 rounded">
-                  <div className="text-gray-400 text-xs mb-1">High Confidence</div>
-                  <div className="text-green-400 font-bold text-lg">{scrapingStats.highConfidence}</div>
+                  <div className="text-gray-500 text-xs mt-1">Real results from database</div>
                 </div>
               </div>
               <div className="mt-3 text-center text-xs text-gray-400">
