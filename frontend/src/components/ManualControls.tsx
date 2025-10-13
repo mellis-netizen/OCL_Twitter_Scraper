@@ -178,16 +178,6 @@ export default function ManualControls() {
       <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
         <h3 className="text-lg font-semibold text-white mb-3">ℹ️ Information</h3>
         <div className="space-y-2 text-sm text-gray-400">
-          <p>
-            <strong className="text-gray-300">Scraping Cycle:</strong> Typically completes in 2-5
-            minutes depending on the number of configured sources. Real-time alerts will appear in
-            the Alert Dashboard as they are generated.
-          </p>
-          <p>
-            <strong className="text-gray-300">Email Summary:</strong> Sent immediately using the
-            configured SMTP settings. Check your email configuration in the backend .env file if
-            emails are not being received.
-          </p>
           <p className="text-yellow-500">
             ⚠️ <strong>Note:</strong> Frequent manual scraping may trigger rate limits on external
             sources. Use scheduled monitoring for regular updates.
