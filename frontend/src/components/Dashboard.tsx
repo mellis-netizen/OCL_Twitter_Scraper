@@ -253,64 +253,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-
-      {/* Seed Data Section */}
-      <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
-        <h3 className="text-xl font-semibold text-white mb-4">Initialize Database</h3>
-        <div className="space-y-4">
-          <p className="text-gray-400 text-sm">
-            Load companies and news feeds from config.py.
-          </p>
-          <button
-            onClick={() => seedMutation.mutate()}
-            disabled={seedMutation.isPending}
-            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-          >
-            {seedMutation.isPending ? '🔄 Loading Data...' : '📥 Load Config Data'}
-          </button>
-
-          {/* Seed Result */}
-          {seedResult && (
-            <div className={`p-4 rounded-lg border ${
-              seedResult.success
-                ? 'bg-green-900 bg-opacity-20 border-green-700'
-                : 'bg-red-900 bg-opacity-20 border-red-700'
-            }`}>
-              <div className="space-y-2">
-                <div className="font-semibold text-white">
-                  {seedResult.success ? '✅ Data Loaded Successfully!' : '❌ Error Loading Data'}
-                </div>
-                {seedResult.success && (
-                  <div className="text-sm text-gray-300 space-y-1">
-                    <div>Companies: {seedResult.companies.added} added, {seedResult.companies.skipped} skipped</div>
-                    <div>Feeds: {seedResult.feeds.added} added, {seedResult.feeds.skipped} skipped</div>
-                    <div className="text-green-400 font-medium mt-2">
-                      Total: {seedResult.summary.total_added} items added to database
-                    </div>
-                  </div>
-                )}
-                {seedResult.error && (
-                  <div className="text-sm text-red-300">{seedResult.error}</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Information Banner */}
-      <div className="bg-primary-900 bg-opacity-20 border border-primary-700 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">💡</span>
-          <div>
-            <h4 className="font-semibold text-primary-300 mb-1">Getting Started</h4>
-            <p className="text-sm text-gray-400">
-              Add companies to monitor, configure news feeds, and set up automated scraping to start
-              receiving TGE alerts. Use the Manual Controls to trigger immediate scans.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
