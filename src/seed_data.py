@@ -86,9 +86,9 @@ def seed_feeds(db: Session) -> dict:
             feed = Feed(
                 name=f"{name} RSS Feed",
                 url=source_url,
-                feed_type="rss",
-                status="active",
-                priority="MEDIUM"
+                type="rss",
+                priority=3,  # Medium priority
+                is_active=True
             )
 
             db.add(feed)
@@ -121,9 +121,9 @@ def seed_feeds(db: Session) -> dict:
             feed = Feed(
                 name=f"{name} Twitter",
                 url=twitter_handle,
-                feed_type="twitter",
-                status="active",
-                priority="HIGH"
+                type="twitter",
+                priority=2,  # High priority
+                is_active=True
             )
 
             db.add(feed)
