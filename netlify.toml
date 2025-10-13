@@ -1,8 +1,8 @@
 # Netlify Configuration for TGE Monitor Frontend
 
 [build]
-  # Build settings
-  base = "."
+  # Build settings - Deploy from frontend/ directory
+  base = "frontend"
   command = "npm run build"
   publish = "dist"
 
