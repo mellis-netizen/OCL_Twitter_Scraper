@@ -376,8 +376,105 @@ async def update_company(
     
     db.commit()
     db.refresh(company)
-    
+
     return CompanyResponse.from_orm(company)
+
+
+# Feed endpoints
+@app.get("/feeds", response_model=List[FeedResponse])
+async def list_feeds(
+    limit: int = Query(100, le=1000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(DatabaseManager.get_db),
+    current_user: Optional[User] = Depends(optional_user)
+):
+    """List feeds (public access)"""
+    feeds = db.query(Feed).offset(offset).limit(limit).all()
+    return [FeedResponse.from_orm(feed) for feed in feeds]
+
+
+@app.get("/feeds/{feed_id}", response_model=FeedResponse)
+async def get_feed(
+    feed_id: int,
+    db: Session = Depends(DatabaseManager.get_db),
+    current_user: Optional[User] = Depends(optional_user)
+):
+    """Get feed by ID (public access)"""
+    feed = db.query(Feed).filter(Feed.id == feed_id).first()
+    if not feed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Feed not found"
+        )
+    return FeedResponse.from_orm(feed)
+
+
+@app.post("/feeds", response_model=FeedResponse)
+async def create_feed(
+    feed_data: FeedCreate,
+    db: Session = Depends(DatabaseManager.get_db),
+    current_user: Optional[User] = Depends(optional_user)
+):
+    """Create new feed (public access)"""
+    # Check if feed already exists
+    existing = db.query(Feed).filter(Feed.url == feed_data.url).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Feed with this URL already exists"
+        )
+
+    feed = Feed(**feed_data.dict())
+    db.add(feed)
+    db.commit()
+    db.refresh(feed)
+
+    return FeedResponse.from_orm(feed)
+
+
+@app.put("/feeds/{feed_id}", response_model=FeedResponse)
+async def update_feed(
+    feed_id: int,
+    feed_update: FeedUpdate,
+    db: Session = Depends(DatabaseManager.get_db),
+    current_user: Optional[User] = Depends(optional_user)
+):
+    """Update feed (public access)"""
+    feed = db.query(Feed).filter(Feed.id == feed_id).first()
+    if not feed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Feed not found"
+        )
+
+    update_data = feed_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(feed, field, value)
+
+    db.commit()
+    db.refresh(feed)
+
+    return FeedResponse.from_orm(feed)
+
+
+@app.delete("/feeds/{feed_id}")
+async def delete_feed(
+    feed_id: int,
+    db: Session = Depends(DatabaseManager.get_db),
+    current_user: Optional[User] = Depends(optional_user)
+):
+    """Delete feed (public access)"""
+    feed = db.query(Feed).filter(Feed.id == feed_id).first()
+    if not feed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Feed not found"
+        )
+
+    db.delete(feed)
+    db.commit()
+
+    return {"message": "Feed deleted successfully"}
 
 
 # Alert endpoints
