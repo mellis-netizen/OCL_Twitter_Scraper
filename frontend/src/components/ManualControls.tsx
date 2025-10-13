@@ -102,11 +102,27 @@ export default function ManualControls() {
     setCurrentStep(5);
     setIsScrapingActive(false);
 
-    // Invalidate and refetch all relevant queries to update dashboard
-    queryClient.invalidateQueries({ queryKey: ['statistics'] });
-    queryClient.invalidateQueries({ queryKey: ['feeds'] });
-    queryClient.invalidateQueries({ queryKey: ['alerts'] });
-    queryClient.invalidateQueries({ queryKey: ['companies'] });
+    // Force refetch ALL queries (active and inactive) to update dashboard immediately
+    await queryClient.invalidateQueries({
+      queryKey: ['statistics'],
+      refetchType: 'all'  // Refetch even if component is not mounted
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ['feeds'],
+      refetchType: 'all'
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ['alerts'],
+      refetchType: 'all'
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ['companies'],
+      refetchType: 'all'
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ['health'],
+      refetchType: 'all'
+    });
 
     // Fetch REAL statistics from the database
     try {
@@ -131,6 +147,12 @@ export default function ManualControls() {
       console.error('Error fetching real stats:', error);
       setScrapingResult('Scraping completed but unable to fetch results.');
     }
+
+    // Additional delayed refetch to catch any feed statistics that update after scraping
+    setTimeout(async () => {
+      await queryClient.refetchQueries({ queryKey: ['feeds'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['statistics'], type: 'all' });
+    }, 3000); // Refetch again after 3 seconds
 
     setTimeout(() => {
       setScrapingResult(null);
