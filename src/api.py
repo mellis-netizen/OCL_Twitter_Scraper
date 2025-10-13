@@ -743,7 +743,7 @@ async def seed_database():
 
 # Monitoring endpoints
 @app.post("/monitoring/trigger")
-async def trigger_monitoring_cycle():
+async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)):
     """Trigger a manual monitoring cycle (public access)"""
     try:
         import uuid
@@ -761,14 +761,45 @@ async def trigger_monitoring_cycle():
         # Generate session ID for this monitoring run
         session_id = str(uuid.uuid4())
 
+        # Get initial counts for comparison
+        initial_alert_count = db.query(Alert).count()
+        initial_feed_count = db.query(Feed).filter(Feed.is_active == True).count()
+
+        # Store results in a shared dict
+        results = {
+            "alerts_created": 0,
+            "articles_processed": 0,
+            "tweets_processed": 0,
+            "feeds_updated": 0,
+            "cycle_time": 0,
+            "error": None
+        }
+
         # Run monitoring cycle in background
         def run_cycle():
             try:
+                import time
+                start_time = time.time()
+
                 monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
                 monitor.run_monitoring_cycle()
-                logger.info(f"Monitoring cycle {session_id} completed successfully")
+
+                # Get results after cycle completes
+                with DatabaseManager.get_session() as db_session:
+                    final_alert_count = db_session.query(Alert).count()
+                    results["alerts_created"] = final_alert_count - initial_alert_count
+                    results["feeds_updated"] = initial_feed_count
+                    results["cycle_time"] = time.time() - start_time
+
+                    # Try to get processing stats from monitor metrics
+                    if hasattr(monitor, 'metrics'):
+                        results["articles_processed"] = monitor.metrics.get('news_articles_processed', 0)
+                        results["tweets_processed"] = monitor.metrics.get('tweets_processed', 0)
+
+                logger.info(f"Monitoring cycle {session_id} completed: {results['alerts_created']} alerts created")
             except Exception as e:
                 logger.error(f"Error in monitoring cycle {session_id}: {str(e)}")
+                results["error"] = str(e)
 
         # Start background thread
         import threading
@@ -777,7 +808,11 @@ async def trigger_monitoring_cycle():
 
         return {
             "message": "Monitoring cycle started successfully",
-            "session_id": session_id
+            "session_id": session_id,
+            "initial_stats": {
+                "total_alerts": initial_alert_count,
+                "active_feeds": initial_feed_count
+            }
         }
     except Exception as e:
         logger.error(f"Error starting monitoring cycle: {str(e)}")

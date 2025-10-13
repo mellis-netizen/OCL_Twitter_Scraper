@@ -540,11 +540,13 @@ class OptimizedCryptoTGEMonitor:
                         if i == 0:  # News
                             articles = future.result()
                             logger.info(f"Fetched {len(articles)} news articles")
+                            self.metrics['news_articles_processed'] = len(articles)
                             news_alerts = self.process_alerts(articles, 'news')
                             all_alerts.extend(news_alerts)
                         else:  # Twitter
                             tweets = future.result()
                             logger.info(f"Fetched {len(tweets)} tweets")
+                            self.metrics['tweets_processed'] = len(tweets)
                             twitter_alerts = self.process_alerts(tweets, 'twitter')
                             all_alerts.extend(twitter_alerts)
                     except Exception as e:

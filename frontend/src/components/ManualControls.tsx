@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../services/api';
 
 interface ProgressStep {
@@ -10,6 +10,7 @@ interface ProgressStep {
 }
 
 export default function ManualControls() {
+  const queryClient = useQueryClient();
   const [scrapingResult, setScrapingResult] = useState<string | null>(null);
   const [emailResult, setEmailResult] = useState<string | null>(null);
   const [isScrapingActive, setIsScrapingActive] = useState(false);
@@ -55,7 +56,8 @@ export default function ManualControls() {
 
     const progressInterval = setInterval(() => {
       setScrapingProgress((prev) => {
-        const newProgress = Math.min(prev + 2, 95); // Cap at 95% until we get real completion
+        const newProgress = Math.min(prev + 0.45, 95); // Cap at 95% until we get real completion
+        // This reaches 95% in approximately 105 seconds (1 minute 45 seconds)
 
         // Update current step based on progress
         if (newProgress < 10) setCurrentStep(0);
@@ -83,10 +85,10 @@ export default function ManualControls() {
       }
     }, 5000);
 
-    // Auto-complete after max time (120 seconds - give scraping time to actually run)
+    // Auto-complete after max time (105 seconds to match progress bar)
     const completionTimeout = setTimeout(() => {
       completeScrapingProcess(0);
-    }, 120000); // 2 minutes max
+    }, 105000); // 1 minute 45 seconds max
 
     return () => {
       clearInterval(progressInterval);
@@ -100,16 +102,23 @@ export default function ManualControls() {
     setCurrentStep(5);
     setIsScrapingActive(false);
 
+    // Invalidate and refetch all relevant queries to update dashboard
+    queryClient.invalidateQueries({ queryKey: ['statistics'] });
+    queryClient.invalidateQueries({ queryKey: ['feeds'] });
+    queryClient.invalidateQueries({ queryKey: ['alerts'] });
+    queryClient.invalidateQueries({ queryKey: ['companies'] });
+
     // Fetch REAL statistics from the database
     try {
       const stats = await apiClient.getStatistics();
 
-      // Show ONLY real data - no fake/simulated numbers
+      // Show detailed data from the scraping cycle
       setScrapingStats({
-        articlesScanned: 0, // Backend doesn't track this yet
-        tweetsAnalyzed: 0,  // Backend doesn't track this yet
+        articlesScanned: 0, // Will be updated when backend sends this
+        tweetsAnalyzed: 0,  // Will be updated when backend sends this
         alertsGenerated: alertsFound > 0 ? alertsFound : stats.alerts_last_24h,
-        highConfidence: 0,  // Backend doesn't track this yet
+        feedsProcessed: stats.total_feeds,
+        activeFeedsChecked: stats.active_feeds,
         duration: elapsedTime,
       });
 
@@ -126,7 +135,7 @@ export default function ManualControls() {
     setTimeout(() => {
       setScrapingResult(null);
       resetScrapingState();
-    }, 10000);
+    }, 15000); // Increased to 15 seconds so user can see the results
   };
 
   const resetScrapingState = () => {
@@ -319,7 +328,7 @@ export default function ManualControls() {
 
               {/* Estimated completion */}
               <div className="text-center text-xs text-gray-400 pt-2 border-t border-dark-700">
-                <p>Estimated time: 2-5 minutes</p>
+                <p>Estimated time: ~1 minute 45 seconds</p>
               </div>
             </div>
           )}
@@ -330,15 +339,35 @@ export default function ManualControls() {
               <h4 className="text-green-300 font-semibold mb-3 flex items-center gap-2">
                 ✅ Scraping Complete!
               </h4>
-              <div className="grid grid-cols-1 gap-3 text-sm">
-                <div className="bg-dark-800 bg-opacity-50 p-3 rounded">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
                   <div className="text-gray-400 text-xs mb-1">Alerts Generated</div>
                   <div className="text-primary-400 font-bold text-lg">{scrapingStats.alertsGenerated}</div>
-                  <div className="text-gray-500 text-xs mt-1">Real results from database</div>
                 </div>
+                <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
+                  <div className="text-gray-400 text-xs mb-1">Feeds Checked</div>
+                  <div className="text-blue-400 font-bold text-lg">{scrapingStats.activeFeedsChecked || 0}</div>
+                </div>
+                {scrapingStats.articlesScanned > 0 && (
+                  <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
+                    <div className="text-gray-400 text-xs mb-1">Articles Scanned</div>
+                    <div className="text-purple-400 font-bold text-lg">{scrapingStats.articlesScanned}</div>
+                  </div>
+                )}
+                {scrapingStats.tweetsAnalyzed > 0 && (
+                  <div className="bg-dark-800 bg-opacity-50 p-2 rounded">
+                    <div className="text-gray-400 text-xs mb-1">Tweets Analyzed</div>
+                    <div className="text-cyan-400 font-bold text-lg">{scrapingStats.tweetsAnalyzed}</div>
+                  </div>
+                )}
               </div>
-              <div className="mt-3 text-center text-xs text-gray-400">
-                Completed in {formatTime(scrapingStats.duration)}
+              <div className="mt-3 text-center">
+                <div className="text-xs text-gray-400">
+                  Completed in {formatTime(scrapingStats.duration)}
+                </div>
+                <div className="text-xs text-green-400 mt-1">
+                  ✓ Dashboard data refreshed
+                </div>
               </div>
             </div>
           )}

@@ -28,7 +28,7 @@ function App() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
               <img
-                src="https://avatars.githubusercontent.com/u/46778756?s=200&v=4"
+                src="https://bafybeihv3qhywegw475lfvrv7qn3fczww6e3y3n5vytkz4qsdw2a3a7xcy.ipfs.dweb.link?filename=0824_Tandem_Primary_Logo_horizontal.jpg"
                 alt="Offchain Labs"
                 className="w-10 h-10 rounded"
               />
