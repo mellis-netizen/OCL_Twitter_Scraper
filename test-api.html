@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>TGE Monitor API Test</h1>
+    <button onclick="testAPI()">Test API Connection</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testAPI() {
+            const result = document.getElementById('result');
+            result.textContent = 'Testing...';
+
+            try {
+                // Test companies endpoint
+                const companiesRes = await fetch('https://ocltwitterscraper-production.up.railway.app/companies');
+                const companies = await companiesRes.json();
+
+                // Test feeds endpoint
+                const feedsRes = await fetch('https://ocltwitterscraper-production.up.railway.app/feeds');
+                const feeds = await feedsRes.json();
+
+                result.textContent = `✅ API Working!\n\nCompanies: ${companies.length}\nFeeds: ${feeds.length}\n\nFirst Company:\n${JSON.stringify(companies[0], null, 2)}\n\nFirst Feed:\n${JSON.stringify(feeds[0], null, 2)}`;
+            } catch (error) {
+                result.textContent = `❌ Error: ${error.message}\n\nThis means the API URL is wrong or CORS is blocking the request.`;
+            }
+        }
+    </script>
+</body>
+</html>
