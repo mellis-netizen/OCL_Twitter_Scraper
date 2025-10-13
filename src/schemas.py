@@ -3,7 +3,7 @@ Pydantic schemas for TGE Monitor API
 Request/response models with validation
 """
 
-from pydantic import BaseModel, EmailStr, field_validator, Field
+from pydantic import BaseModel, EmailStr, field_validator, model_validator, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -304,9 +304,16 @@ class AlertFilter(BaseModel):
     status: Optional[AlertStatus] = None
     from_date: Optional[datetime] = None
     to_date: Optional[datetime] = None
-    keywords: List[str] = Field(default_factory=list)
+    keywords: Optional[List[str]] = None
     limit: int = Field(default=100, ge=1, le=1000)
     offset: int = Field(default=0, ge=0)
+
+    @model_validator(mode='after')
+    def convert_none_to_list_keywords(self):
+        """Convert None to empty list for compatibility"""
+        if self.keywords is None:
+            self.keywords = []
+        return self
 
 
 class CompanyFilter(BaseModel):
