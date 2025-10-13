@@ -855,23 +855,49 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
         db.commit()
         db.refresh(monitoring_session)
 
-        # Run monitoring cycle in background
+        # Run monitoring cycle in background with timeout
         def run_cycle():
             db_session = None
             try:
                 import time
+                import signal
+                import threading
                 start_time = time.time()
 
-                # Get database session for real-time updates
-                db_session = DatabaseManager.SessionLocal()
+                # Set maximum execution time (5 minutes)
+                MAX_EXECUTION_TIME = 300
+                cycle_completed = threading.Event()
 
-                # Create monitor instance with session_id and db_session
-                monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
-                monitor.session_id = session_id
-                monitor.db_session = db_session
+                def execute_cycle():
+                    nonlocal db_session
+                    try:
+                        # Get database session for real-time updates
+                        db_session = DatabaseManager.SessionLocal()
 
-                # Run monitoring cycle (will update session in real-time)
-                monitor.run_monitoring_cycle()
+                        # Create monitor instance with session_id and db_session
+                        logger.info(f"Creating monitor for session {session_id}")
+                        monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
+                        monitor.session_id = session_id
+                        monitor.db_session = db_session
+                        logger.info(f"Monitor created, starting cycle for session {session_id}")
+
+                        # Run monitoring cycle (will update session in real-time)
+                        monitor.run_monitoring_cycle()
+                        cycle_completed.set()
+                    except Exception as e:
+                        logger.error(f"Error in execute_cycle: {str(e)}", exc_info=True)
+                        raise
+
+                # Start cycle in thread
+                cycle_thread = threading.Thread(target=execute_cycle, daemon=True)
+                cycle_thread.start()
+
+                # Wait for completion or timeout
+                cycle_thread.join(timeout=MAX_EXECUTION_TIME)
+
+                if not cycle_completed.is_set():
+                    logger.error(f"Monitoring cycle {session_id} timed out after {MAX_EXECUTION_TIME}s")
+                    raise TimeoutError(f"Scraping cycle exceeded maximum execution time of {MAX_EXECUTION_TIME}s")
 
                 # Final update with complete results
                 session = db_session.query(MonitoringSession).filter(
