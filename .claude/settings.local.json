@@ -31,7 +31,9 @@
       "Bash(git rm:*)",
       "Bash(curl:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(for i in {1..4})",
+      "Bash(done)"
     ],
     "deny": []
   },
