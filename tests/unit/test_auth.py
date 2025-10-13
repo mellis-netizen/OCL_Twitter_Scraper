@@ -977,9 +977,9 @@ class TestTokenExpiration:
         token_data = AuthManager.verify_token(token)
         assert token_data is not None
 
-        # Wait for expiration
+        # Wait for expiration (2 seconds to be safe)
         import time
-        time.sleep(1.5)
+        time.sleep(2)
 
         # Token should be invalid now
         token_data = AuthManager.verify_token(token)

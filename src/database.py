@@ -24,13 +24,35 @@ DATABASE_URL = os.getenv(
 # Redis configuration for caching
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
-# SQLAlchemy setup
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=300,
-    echo=False  # Set to True for SQL logging in development
-)
+# SQLAlchemy setup with optimized connection pooling
+# Configure engine based on database type (PostgreSQL vs SQLite)
+if 'sqlite' in DATABASE_URL.lower():
+    # SQLite configuration (for testing)
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False
+    )
+else:
+    # PostgreSQL configuration (for production)
+    engine = create_engine(
+        DATABASE_URL,
+        # Connection pool configuration for high performance
+        pool_size=20,              # Base pool size for concurrent connections
+        max_overflow=10,           # Extra connections allowed under load
+        pool_timeout=30,           # Wait 30s for connection before raising error
+        pool_recycle=3600,         # Recycle connections after 1 hour
+        pool_pre_ping=True,        # Verify connection health before use
+        pool_reset_on_return='rollback',  # Reset connection state on return
+        # Performance settings
+        echo=False,                # Set to True for SQL logging in development
+        echo_pool=False,           # Set to True for pool debugging
+        # Query execution settings
+        execution_options={
+            "isolation_level": "READ COMMITTED"  # Balance between consistency and performance
+        }
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

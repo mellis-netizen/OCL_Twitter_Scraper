@@ -34,10 +34,13 @@ logger = logging.getLogger(__name__)
 class OptimizedNewsScraper:
     """Enhanced news scraper with full article extraction and intelligent processing."""
 
-    def __init__(self, companies: List[Dict], keywords: List[str], news_sources: List[str]):
+    def __init__(self, companies: List[Dict], keywords: List[str], news_sources: List[str],
+                 relevance_threshold: float = 0.65, min_confidence: float = 0.60):
         self.companies = companies
         self.keywords = keywords
         self.news_sources = news_sources
+        self.relevance_threshold = relevance_threshold
+        self.min_confidence = min_confidence
 
         # Swarm coordination hooks (optional, set via set_swarm_hooks)
         self.swarm_hooks = None
@@ -373,22 +376,27 @@ class OptimizedNewsScraper:
                     snippet = full_text[start:end].strip()
                     relevance_info['context_snippets'].append(snippet)
         
-        # Enhanced keyword matching with proximity analysis
+        # Enhanced keyword matching with weighted scoring
         high_value_phrases = [
-            r'token generation event',
-            r'tge is live',
-            r'airdrop is live',
-            r'claim your tokens',
-            r'token launch date',
-            r'tokens are now available',
-            r'trading is now live'
+            (r'token generation event', 45),
+            (r'tge\s+(is\s+)?live', 40),
+            (r'airdrop\s+(is\s+)?live', 40),
+            (r'claim\s+(your\s+)?tokens?\s+(now|today)', 40),
+            (r'token\s+launch\s+date', 35),
+            (r'tokens?\s+(are\s+)?(now\s+)?available', 35),
+            (r'trading\s+(is\s+)?(now\s+)?live', 35),
+            (r'claim\s+portal\s+(is\s+)?(now\s+)?live', 40),
+            (r'genesis\s+event', 30),
+            (r'mainnet\s+launch', 30)
         ]
-        
-        for phrase in high_value_phrases:
-            if re.search(phrase, full_text):
-                relevance_info['matched_keywords'].append(phrase)
-                relevance_info['confidence'] += 30
+
+        for phrase_pattern, score in high_value_phrases:
+            matches = re.finditer(phrase_pattern, full_text, re.IGNORECASE)
+            for match in matches:
+                relevance_info['matched_keywords'].append(match.group(0))
+                relevance_info['confidence'] += score
                 relevance_info['signals'].append('high_value_phrase')
+                break  # Count each pattern only once
 
         # General keyword matching (from self.keywords)
         for keyword in self.keywords:
@@ -423,19 +431,33 @@ class OptimizedNewsScraper:
                 relevance_info['confidence'] += 10
                 break
         
-        # Exclusion patterns
+        # Enhanced exclusion patterns with context awareness
         exclusions = [
-            r'test\s*net',
-            r'game\s+token',
-            r'nft\s+collection',
-            r'price\s+prediction',
-            r'technical\s+analysis'
+            (r'test\s*net(?!\s+to\s+mainnet)', 50, 'testnet'),  # Don't penalize "testnet to mainnet"
+            (r'game\s+token(?!omics)', 40, 'game_token'),  # Don't penalize "game tokenomics"
+            (r'nft\s+(collection|drop|mint)', 30, 'nft_collection'),
+            (r'price\s+prediction', 35, 'speculation'),
+            (r'technical\s+analysis', 35, 'speculation'),
+            (r'espresso\s+machine', 60, 'coffee_machine'),
+            (r'coffee\s+(shop|bean|brew)', 50, 'coffee_related'),
+            (r'in-game\s+(currency|item|token)', 45, 'gaming'),
+            (r'play-to-earn\s+game', 40, 'gaming'),
+            (r'fabric\s+(textile|cloth|material)', 50, 'physical_goods')
         ]
-        
-        for exclusion in exclusions:
-            if re.search(exclusion, full_text, re.IGNORECASE):
-                relevance_info['confidence'] -= 20
-                relevance_info['signals'].append(f'exclusion_found')
+
+        # Check for crypto context
+        crypto_terms = [
+            'blockchain', 'crypto', 'defi', 'web3', 'protocol', 'mainnet',
+            'smart contract', 'dapp', 'layer 2', 'rollup'
+        ]
+        has_crypto_context = any(term in full_text for term in crypto_terms)
+
+        for pattern, penalty, label in exclusions:
+            if re.search(pattern, full_text, re.IGNORECASE):
+                # Reduce penalty if crypto context present
+                actual_penalty = penalty // 2 if has_crypto_context else penalty
+                relevance_info['confidence'] -= actual_penalty
+                relevance_info['signals'].append(f'exclusion:{label}')
         
         # Context window analysis
         if relevance_info['matched_companies'] and relevance_info['matched_keywords']:
@@ -459,11 +481,16 @@ class OptimizedNewsScraper:
         
         # Normalize confidence
         relevance_info['confidence'] = max(0, min(100, relevance_info['confidence']))
-        
-        # Determine relevance
-        is_relevant = relevance_info['confidence'] >= 50
-        
-        return is_relevant, relevance_info['confidence'] / 100, relevance_info
+
+        # Apply relevance threshold
+        confidence_score = relevance_info['confidence'] / 100
+        is_relevant = confidence_score >= self.relevance_threshold
+
+        # Add metadata about threshold
+        relevance_info['threshold_used'] = self.relevance_threshold
+        relevance_info['meets_threshold'] = is_relevant
+
+        return is_relevant, confidence_score, relevance_info
     
     def process_feed(self, feed_url: str) -> List[Dict]:
         """Process a single RSS feed with article content extraction."""
@@ -515,8 +542,9 @@ class OptimizedNewsScraper:
                     if content:
                         # Analyze full content
                         is_relevant, confidence, info = self.analyze_content_relevance(content, title)
-                        
-                        if is_relevant:
+
+                        # Apply minimum confidence threshold
+                        if is_relevant and confidence >= self.min_confidence:
                             articles.append({
                                 'url': url,
                                 'title': title,
@@ -526,9 +554,10 @@ class OptimizedNewsScraper:
                                 'source': feed_url,
                                 'confidence': confidence,
                                 'relevance_info': info,
-                                'feed_title': feed.feed.get('title', 'Unknown')
+                                'feed_title': feed.feed.get('title', 'Unknown'),
+                                'meets_min_confidence': True
                             })
-                            
+
                             # Update stats
                             self.feed_stats[feed_key]['tge_found'] += 1
                     

@@ -21,7 +21,8 @@
       "Bash(mv:*)",
       "WebSearch",
       "Bash(cat:*)",
-      "Bash(pip3 install:*)"
+      "Bash(pip3 install:*)",
+      "Bash(pip3 list:*)"
     ],
     "deny": []
   },

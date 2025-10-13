@@ -135,11 +135,17 @@ class Alert(Base):
     company = relationship("Company", back_populates="alerts")
     user = relationship("User", back_populates="alerts")
     
-    # Indexes for performance
+    # Indexes for performance - optimized for common query patterns
     __table_args__ = (
+        # Existing indexes
         Index('idx_alerts_company_created', 'company_id', 'created_at'),
         Index('idx_alerts_confidence_created', 'confidence', 'created_at'),
         Index('idx_alerts_source_created', 'source', 'created_at'),
+        # New composite indexes for better query performance
+        Index('idx_alerts_company_conf_time', 'company_id', 'confidence', 'created_at'),
+        Index('idx_alerts_status_created', 'status', 'created_at'),
+        Index('idx_alerts_urgency_created', 'urgency_level', 'created_at'),
+        Index('idx_alerts_created_desc', 'created_at', postgresql_ops={'created_at': 'DESC'}),
     )
     
     def to_dict(self):
@@ -184,7 +190,14 @@ class Feed(Base):
     tge_alerts_found = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
+    # Indexes for feed selection and performance tracking
+    __table_args__ = (
+        Index('idx_feed_active_priority', 'is_active', 'priority'),
+        Index('idx_feed_last_fetch', 'last_fetch'),
+        Index('idx_feed_performance', 'tge_alerts_found', 'success_count'),
+    )
+
     def to_dict(self):
         return {
             "id": self.id,

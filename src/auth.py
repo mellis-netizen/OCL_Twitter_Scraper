@@ -6,10 +6,10 @@ JWT token-based authentication with API key support
 import os
 import secrets
 import hashlib
+import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
 from sqlalchemy.orm import Session
@@ -23,9 +23,6 @@ SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # Security schemes
 security = HTTPBearer()
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -38,14 +35,26 @@ class AuthManager:
     def hash_password(password: str) -> str:
         """Hash a password"""
         # Bcrypt has a maximum password length of 72 bytes
-        if len(password.encode('utf-8')) > 72:
-            password = password[:72]
-        return pwd_context.hash(password)
+        # Truncate the password in bytes to ensure it doesn't exceed 72 bytes
+        password_bytes = password.encode('utf-8')[:72]
+
+        # Generate salt and hash using bcrypt directly
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password_bytes, salt)
+        return hashed.decode('utf-8')
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash"""
-        return pwd_context.verify(plain_password, hashed_password)
+        # Bcrypt has a maximum password length of 72 bytes
+        # Apply same truncation as hash_password for consistency
+        password_bytes = plain_password.encode('utf-8')[:72]
+        hashed_bytes = hashed_password.encode('utf-8')
+
+        try:
+            return bcrypt.checkpw(password_bytes, hashed_bytes)
+        except Exception:
+            return False
     
     @staticmethod
     def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
