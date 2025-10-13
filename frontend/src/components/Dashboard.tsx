@@ -1,12 +1,8 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import apiClient from '../services/api';
 import type { SystemStatistics, HealthCheck } from '../types/api';
 
 export default function Dashboard() {
-  const [seedResult, setSeedResult] = useState<any>(null);
-  const queryClient = useQueryClient();
-
   // Fetch system statistics
   const { data: stats, isLoading: statsLoading } = useQuery<SystemStatistics>({
     queryKey: ['statistics'],
@@ -19,21 +15,6 @@ export default function Dashboard() {
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
     refetchInterval: 10000, // Refetch every 10 seconds
-  });
-
-  // Seed data mutation
-  const seedMutation = useMutation({
-    mutationFn: () => apiClient.seedData(),
-    onSuccess: (data) => {
-      setSeedResult(data);
-      // Refresh statistics
-      queryClient.invalidateQueries({ queryKey: ['statistics'] });
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
-      queryClient.invalidateQueries({ queryKey: ['feeds'] });
-    },
-    onError: (error: any) => {
-      setSeedResult({ success: false, error: error.message });
-    }
   });
 
   if (statsLoading) {
