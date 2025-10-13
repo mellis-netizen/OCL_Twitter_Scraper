@@ -254,36 +254,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
-        <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors text-center">
-            <div className="text-2xl mb-2">🚨</div>
-            <div className="text-sm text-gray-300">View Alerts</div>
-          </button>
-          <button className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors text-center">
-            <div className="text-2xl mb-2">🏢</div>
-            <div className="text-sm text-gray-300">Manage Companies</div>
-          </button>
-          <button className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors text-center">
-            <div className="text-2xl mb-2">📰</div>
-            <div className="text-sm text-gray-300">Configure Feeds</div>
-          </button>
-          <button className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors text-center">
-            <div className="text-2xl mb-2">⚙️</div>
-            <div className="text-sm text-gray-300">System Controls</div>
-          </button>
-        </div>
-      </div>
-
       {/* Seed Data Section */}
       <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
         <h3 className="text-xl font-semibold text-white mb-4">Initialize Database</h3>
         <div className="space-y-4">
           <p className="text-gray-400 text-sm">
-            Load companies and news feeds from config.py. This will populate your database with
-            15 companies and all configured news sources/Twitter accounts.
+            Load companies and news feeds from config.py.
           </p>
           <button
             onClick={() => seedMutation.mutate()}
