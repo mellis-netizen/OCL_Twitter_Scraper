@@ -109,10 +109,8 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center text-sm text-gray-400">
             <p>
-              TGE Monitor v1.0.0 - Built with React, TypeScript, and FastAPI
             </p>
             <p className="mt-1 text-xs">
-              Real-time cryptocurrency token generation event monitoring
             </p>
           </div>
         </div>
