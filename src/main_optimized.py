@@ -37,7 +37,7 @@ from .swarm_integration import SwarmCoordinationHooks
 
 # Import database models for saving alerts
 from .database import DatabaseManager
-from .models import Alert, Company
+from .models import Alert, Company, Feed
 
 # Configure logging
 def setup_logging():
@@ -457,6 +457,43 @@ class OptimizedCryptoTGEMonitor:
 
         return saved_count
 
+    def update_feed_statistics(self):
+        """Update Feed table statistics from news scraper state."""
+        try:
+            with DatabaseManager.get_session() as db:
+                # Get feed stats from news scraper
+                feed_stats = self.news_scraper.feed_stats
+
+                for feed_key, stats in feed_stats.items():
+                    feed_url = stats.get('url')
+                    if not feed_url:
+                        continue
+
+                    # Find feed in database
+                    db_feed = db.query(Feed).filter(Feed.url == feed_url).first()
+                    if db_feed:
+                        # Update statistics
+                        db_feed.success_count = stats.get('success_count', 0)
+                        db_feed.failure_count = stats.get('failure_count', 0)
+                        db_feed.tge_alerts_found = stats.get('tge_found', 0)
+
+                        # Update timestamps
+                        if stats.get('last_success'):
+                            try:
+                                last_success_dt = datetime.fromisoformat(stats['last_success'].replace('Z', '+00:00'))
+                                db_feed.last_success = last_success_dt
+                                db_feed.last_fetch = last_success_dt
+                            except:
+                                pass
+
+                        logger.debug(f"Updated feed stats for {feed_url}")
+
+                db.commit()
+                logger.info("Feed statistics updated successfully")
+
+        except Exception as e:
+            logger.error(f"Error updating feed statistics: {str(e)}")
+
     def run_monitoring_cycle(self):
         """Execute one complete monitoring cycle."""
         cycle_start = time.time()
@@ -507,6 +544,10 @@ class OptimizedCryptoTGEMonitor:
                 # Save alerts to database
                 saved_count = self.save_alerts_to_database(all_alerts)
                 logger.info(f"Saved {saved_count} alerts to database")
+
+                # Update feed statistics in database
+                self.update_feed_statistics()
+                logger.info("Updated feed statistics in database")
 
                 # Send email
                 success = self.email_notifier.send_tge_alerts(
