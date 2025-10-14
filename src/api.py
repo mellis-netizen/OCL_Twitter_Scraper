@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc, and_, or_
 import uvicorn
 
-from .database import DatabaseManager, CacheManager, init_db
+from .database import DatabaseManager, CacheManager, init_db, SessionLocal
 from .models import User, Company, Alert, Feed, MonitoringSession, SystemMetrics, APIKey
 from .schemas import (
     UserCreate, UserUpdate, UserResponse, LoginRequest, Token,
@@ -853,7 +853,7 @@ def run_monitoring_cycle_task(session_id: str):
         logger.info(f"[{session_id}] Background task started")
 
         # Get database session for real-time updates
-        db_session = DatabaseManager.SessionLocal()
+        db_session = SessionLocal()
         logger.info(f"[{session_id}] Database session created in background task")
 
         # Update progress IMMEDIATELY to show we started
