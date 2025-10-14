@@ -886,46 +886,52 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
                     try:
                         # Get database session for real-time updates
                         db_session = DatabaseManager.SessionLocal()
-                        logger.info(f"Database session created for {session_id}")
+                        logger.info(f"[{session_id}] Database session created")
 
                         # Update progress IMMEDIATELY to show we started
                         session = db_session.query(MonitoringSession).filter(
                             MonitoringSession.session_id == session_id
                         ).first()
-                        if session:
-                            session.performance_metrics = {'phase': 'initializing', 'timestamp': datetime.now(timezone.utc).isoformat()}
+                        if not session:
+                            raise Exception(f"Session {session_id} not found in database!")
 
-                            # Mark as modified for SQLAlchemy JSON tracking
-                            from sqlalchemy.orm.attributes import flag_modified
-                            flag_modified(session, 'performance_metrics')
+                        session.performance_metrics = {'phase': 'starting', 'timestamp': datetime.now(timezone.utc).isoformat()}
 
-                            db_session.commit()
-                            db_session.flush()
-                            logger.info(f"Initial progress updated for {session_id}")
+                        # Mark as modified for SQLAlchemy JSON tracking
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(session, 'performance_metrics')
 
-                        # Create monitor instance with session_id and db_session
-                        logger.info(f"Creating monitor for session {session_id}...")
+                        db_session.commit()
+                        db_session.flush()
+                        logger.info(f"[{session_id}] Progress set to 'starting' (5%)")
+
+                        # Check if database is seeded
+                        from .models import Feed
+                        feed_count = db_session.query(Feed).filter(Feed.is_active == True).count()
+                        logger.info(f"[{session_id}] Found {feed_count} active feeds in database")
+
+                        if feed_count == 0:
+                            logger.warning(f"[{session_id}] NO FEEDS SEEDED! Please call POST /seed-data first")
+
+                        # Create monitor instance (this can be slow)
+                        logger.info(f"[{session_id}] Creating monitor instance...")
+                        session.performance_metrics = {'phase': 'initializing_monitor', 'timestamp': datetime.now(timezone.utc).isoformat()}
+                        flag_modified(session, 'performance_metrics')
+                        db_session.commit()
+
                         monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
-                        logger.info(f"Monitor instance created for {session_id}")
+                        logger.info(f"[{session_id}] Monitor instance created successfully")
 
                         # CRITICAL: Set session_id and db_session BEFORE running
                         monitor.session_id = session_id
                         monitor.db_session = db_session
-                        logger.info(f"Monitor configured with session tracking for {session_id}")
-
-                        # Force an immediate progress update to confirm tracking works
-                        monitor._update_progress('running', {
-                            'phase': 'starting',
-                            'timestamp': datetime.now(timezone.utc).isoformat()
-                        })
-                        logger.info(f"Forced progress update sent for {session_id}")
+                        logger.info(f"[{session_id}] Monitor configured with session tracking")
 
                         # Run monitoring cycle (will update session in real-time)
-                        logger.info(f"Starting monitoring cycle for session {session_id}")
+                        logger.info(f"[{session_id}] Starting monitoring cycle NOW")
                         monitor.run_monitoring_cycle()
-                        logger.info(f"Monitoring cycle completed for {session_id}")
+                        logger.info(f"[{session_id}] Monitoring cycle completed successfully")
                         cycle_completed.set()
-                        logger.info(f"Monitoring cycle completed for {session_id}")
                     except Exception as e:
                         logger.error(f"Error in execute_cycle for {session_id}: {str(e)}", exc_info=True)
                         raise
@@ -1071,6 +1077,7 @@ async def get_monitoring_session_progress(
         # Estimate progress based on phase
         phase_progress = {
             'starting': 5,
+            'initializing_monitor': 10,  # Added this phase
             'scraping_news': 15,
             'processing_news': 35,
             'news_complete': 45,
