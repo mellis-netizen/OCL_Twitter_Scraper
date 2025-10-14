@@ -180,6 +180,13 @@ class OptimizedCryptoTGEMonitor:
                 feeds = db.query(Feed).filter(Feed.is_active == True).all()
                 feed_urls = [feed.url for feed in feeds]
                 logger.info(f"Loaded {len(feed_urls)} active feeds from database")
+
+                # CRITICAL: If no feeds in database, use config defaults
+                if len(feed_urls) == 0:
+                    logger.warning("No feeds found in database! Using defaults from config")
+                    logger.warning("Please seed the database by calling POST /seed-data")
+                    return NEWS_SOURCES
+
                 return feed_urls
         except Exception as e:
             logger.error(f"Error loading feeds from database: {str(e)}, falling back to config")
@@ -557,11 +564,18 @@ class OptimizedCryptoTGEMonitor:
                     session.errors_encountered = self.current_cycle_stats['errors_encountered']
 
                     if details:
-                        session.performance_metrics = session.performance_metrics or {}
-                        session.performance_metrics.update(details)
+                        # CRITICAL: Must replace entire dict for SQLAlchemy to detect change
+                        current_metrics = session.performance_metrics or {}
+                        current_metrics.update(details)
+                        session.performance_metrics = current_metrics
+
+                        # Mark the field as modified (for SQLAlchemy JSON tracking)
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(session, 'performance_metrics')
 
                     self.db_session.commit()
-                    logger.debug(f"Updated session {self.session_id} progress: {status}")
+                    self.db_session.flush()  # Ensure changes are written
+                    logger.info(f"Updated session {self.session_id} progress: {status}, phase: {details.get('phase') if details else 'none'}")
             except Exception as e:
                 logger.error(f"Error updating progress: {str(e)}")
 

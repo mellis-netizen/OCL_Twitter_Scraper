@@ -894,7 +894,13 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
                         ).first()
                         if session:
                             session.performance_metrics = {'phase': 'initializing', 'timestamp': datetime.now(timezone.utc).isoformat()}
+
+                            # Mark as modified for SQLAlchemy JSON tracking
+                            from sqlalchemy.orm.attributes import flag_modified
+                            flag_modified(session, 'performance_metrics')
+
                             db_session.commit()
+                            db_session.flush()
                             logger.info(f"Initial progress updated for {session_id}")
 
                         # Create monitor instance with session_id and db_session
@@ -902,12 +908,22 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
                         monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
                         logger.info(f"Monitor instance created for {session_id}")
 
+                        # CRITICAL: Set session_id and db_session BEFORE running
                         monitor.session_id = session_id
                         monitor.db_session = db_session
-                        logger.info(f"Monitor configured, starting cycle for session {session_id}")
+                        logger.info(f"Monitor configured with session tracking for {session_id}")
+
+                        # Force an immediate progress update to confirm tracking works
+                        monitor._update_progress('running', {
+                            'phase': 'starting',
+                            'timestamp': datetime.now(timezone.utc).isoformat()
+                        })
+                        logger.info(f"Forced progress update sent for {session_id}")
 
                         # Run monitoring cycle (will update session in real-time)
+                        logger.info(f"Starting monitoring cycle for session {session_id}")
                         monitor.run_monitoring_cycle()
+                        logger.info(f"Monitoring cycle completed for {session_id}")
                         cycle_completed.set()
                         logger.info(f"Monitoring cycle completed for {session_id}")
                     except Exception as e:
@@ -940,17 +956,21 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
                     session.errors_encountered = monitor.current_cycle_stats['errors_encountered']
 
                     # Update performance metrics
-                    if not session.performance_metrics:
-                        session.performance_metrics = {}
-
-                    session.performance_metrics.update({
+                    current_metrics = session.performance_metrics or {}
+                    current_metrics.update({
                         "cycle_time": time.time() - start_time,
                         "total_articles": monitor.current_cycle_stats['articles_processed'],
                         "total_tweets": monitor.current_cycle_stats['tweets_processed'],
                         "total_feeds": monitor.current_cycle_stats['feeds_processed'],
                         "total_alerts": monitor.current_cycle_stats['alerts_generated'],
-                        "total_errors": monitor.current_cycle_stats['errors_encountered']
+                        "total_errors": monitor.current_cycle_stats['errors_encountered'],
+                        "phase": "completed"
                     })
+                    session.performance_metrics = current_metrics
+
+                    # Mark as modified
+                    from sqlalchemy.orm.attributes import flag_modified
+                    flag_modified(session, 'performance_metrics')
 
                     db_session.commit()
 
