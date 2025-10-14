@@ -15,11 +15,14 @@ from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-# Database configuration from environment
-DATABASE_URL = os.getenv(
-    'DATABASE_URL', 
-    'postgresql://computer@localhost:5432/tge_monitor'
-)
+# Database configuration from environment (REQUIRED)
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is required. "
+        "Example: postgresql://user:password@host:port/dbname"
+    )
 
 # Redis configuration for caching
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')

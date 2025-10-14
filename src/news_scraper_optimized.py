@@ -211,9 +211,9 @@ class OptimizedNewsScraper:
             return self.cache['articles'][cache_key]['content']
         
         try:
-            # Use newspaper3k for general article extraction
+            # Use newspaper3k for general article extraction with timeout
             article = Article(url)
-            article.download()
+            article.download()  # Note: newspaper3k doesn't support timeout directly
             article.parse()
             
             # Get the main content

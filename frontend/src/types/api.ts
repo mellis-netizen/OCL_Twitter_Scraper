@@ -186,3 +186,6 @@ export interface AlertNotification {
 export interface APIError {
   detail: string;
 }
+
+// Alert response type (alias for Alert interface)
+export type AlertResponse = Alert;

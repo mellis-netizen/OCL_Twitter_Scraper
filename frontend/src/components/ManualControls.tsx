@@ -108,13 +108,13 @@ export default function ManualControls() {
     setCurrentStep(5);
     setIsScrapingActive(false);
 
-    // Parallel invalidation for faster updates
+    // Parallel refetch for immediate updates (wait for fresh data)
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['statistics'], refetchType: 'all' }),
-      queryClient.invalidateQueries({ queryKey: ['feeds'], refetchType: 'all' }),
-      queryClient.invalidateQueries({ queryKey: ['alerts'], refetchType: 'all' }),
-      queryClient.invalidateQueries({ queryKey: ['companies'], refetchType: 'all' }),
-      queryClient.invalidateQueries({ queryKey: ['health'], refetchType: 'all' })
+      queryClient.refetchQueries({ queryKey: ['statistics'], type: 'active' }),
+      queryClient.refetchQueries({ queryKey: ['feeds'], type: 'active' }),
+      queryClient.refetchQueries({ queryKey: ['alerts'], type: 'active' }),
+      queryClient.refetchQueries({ queryKey: ['companies'], type: 'active' }),
+      queryClient.refetchQueries({ queryKey: ['health'], type: 'active' })
     ]);
 
     // Display real-time metrics from backend

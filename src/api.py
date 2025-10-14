@@ -47,13 +47,19 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS middleware
+# CORS middleware - SECURITY: Configure specific origins for production
+allowed_origins = os.getenv(
+    'CORS_ORIGINS',
+    'http://localhost:3000,http://localhost:5173,https://main.d3auorpmwvvmu9.amplifyapp.com'
+).split(',')
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=allowed_origins,  # Specific origins only
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # WebSocket connection manager
@@ -569,11 +575,13 @@ async def list_alerts(
         query = query.filter(Alert.created_at <= filters.to_date)
     
     if filters.keywords:
-        # Search in title and content
+        # Search in title and content with SQL wildcard escaping
         keyword_filters = []
         for keyword in filters.keywords:
-            keyword_filters.append(Alert.title.ilike(f"%{keyword}%"))
-            keyword_filters.append(Alert.content.ilike(f"%{keyword}%"))
+            # Escape SQL wildcards to prevent injection
+            escaped_keyword = keyword.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+            keyword_filters.append(Alert.title.ilike(f"%{escaped_keyword}%"))
+            keyword_filters.append(Alert.content.ilike(f"%{escaped_keyword}%"))
         query = query.filter(or_(*keyword_filters))
     
     alerts = query.order_by(desc(Alert.created_at)).offset(filters.offset).limit(filters.limit).all()

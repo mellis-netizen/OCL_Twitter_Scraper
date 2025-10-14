@@ -38,7 +38,7 @@ const AlertCard = memo(({ alert }: { alert: AlertResponse }) => {
 
       {alert.keywords_matched && alert.keywords_matched.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1">
-          {alert.keywords_matched.slice(0, 5).map((keyword, idx) => (
+          {alert.keywords_matched.slice(0, 5).map((keyword: string, idx: number) => (
             <span
               key={idx}
               className="px-2 py-0.5 bg-dark-700 text-gray-300 rounded text-xs"
