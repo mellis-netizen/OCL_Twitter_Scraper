@@ -990,16 +990,13 @@ async def test_background_task(background_tasks: BackgroundTasks):
 
 # Monitoring endpoints
 @app.post("/monitoring/trigger")
-async def trigger_monitoring_cycle(
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(DatabaseManager.get_db)
-):
-    """Trigger a manual monitoring cycle using FastAPI BackgroundTasks"""
-    try:
-        import uuid
-        import sys
-        from pathlib import Path
+async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)):
+    """Trigger a manual monitoring cycle - RUNS SYNCHRONOUSLY (will take 60-180s)"""
+    import uuid
+    import sys
+    from pathlib import Path
 
+    try:
         # Add parent directory to sys.path so config.py can be imported
         project_root = Path(__file__).parent.parent
         if str(project_root) not in sys.path:
@@ -1017,19 +1014,23 @@ async def trigger_monitoring_cycle(
         db.commit()
         db.refresh(monitoring_session)
 
-        # Add background task (FastAPI BackgroundTasks - proper async way)
-        background_tasks.add_task(run_monitoring_cycle_task, session_id)
-        logger.info(f"Added monitoring cycle background task for session {session_id}")
+        logger.info(f"Starting SYNCHRONOUS monitoring cycle for session {session_id}")
+
+        # Run monitoring cycle SYNCHRONOUSLY (blocks request until complete)
+        # This is the only reliable way in Railway's environment
+        run_monitoring_cycle_task(session_id)
+
+        logger.info(f"Monitoring cycle {session_id} completed")
 
         return {
-            "message": "Monitoring cycle started successfully",
+            "message": "Monitoring cycle completed successfully",
             "session_id": session_id
         }
     except Exception as e:
-        logger.error(f"Error starting monitoring cycle: {str(e)}")
+        logger.error(f"Error in monitoring cycle: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start monitoring cycle: {str(e)}"
+            detail=f"Failed to complete monitoring cycle: {str(e)}"
         )
 
 
