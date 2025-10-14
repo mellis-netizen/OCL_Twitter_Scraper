@@ -965,6 +965,9 @@ def run_monitoring_cycle_task(session_id: str):
             except Exception as update_error:
                 logger.error(f"[{session_id}] Error updating failed session: {str(update_error)}")
 
+        # Re-raise the exception so the endpoint can catch it
+        raise
+
     finally:
         if db_session:
             try:
