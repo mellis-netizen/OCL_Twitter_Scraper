@@ -9,7 +9,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session, joinedload
@@ -839,10 +839,148 @@ async def seed_database():
         )
 
 
+# Background task function (runs outside request context)
+def run_monitoring_cycle_task(session_id: str):
+    """Background task for running monitoring cycle"""
+    import time
+    from sqlalchemy.orm.attributes import flag_modified
+
+    db_session = None
+    monitor = None
+    start_time = time.time()
+
+    try:
+        logger.info(f"[{session_id}] Background task started")
+
+        # Get database session for real-time updates
+        db_session = DatabaseManager.SessionLocal()
+        logger.info(f"[{session_id}] Database session created in background task")
+
+        # Update progress IMMEDIATELY to show we started
+        session = db_session.query(MonitoringSession).filter(
+            MonitoringSession.session_id == session_id
+        ).first()
+
+        if not session:
+            raise Exception(f"Session {session_id} not found in database!")
+
+        # Set starting phase
+        session.performance_metrics = {'phase': 'starting', 'timestamp': datetime.now(timezone.utc).isoformat()}
+        flag_modified(session, 'performance_metrics')
+        db_session.commit()
+        db_session.flush()
+        logger.info(f"[{session_id}] Progress set to 'starting' (5%)")
+
+        # Check if database is seeded
+        feed_count = db_session.query(Feed).filter(Feed.is_active == True).count()
+        logger.info(f"[{session_id}] Found {feed_count} active feeds in database")
+
+        if feed_count == 0:
+            logger.warning(f"[{session_id}] NO FEEDS SEEDED! Please call POST /seed-data first")
+
+        # Create monitor instance (this can be slow)
+        logger.info(f"[{session_id}] Creating monitor instance...")
+        session.performance_metrics = {'phase': 'initializing_monitor', 'timestamp': datetime.now(timezone.utc).isoformat()}
+        flag_modified(session, 'performance_metrics')
+        db_session.commit()
+
+        from .main_optimized import OptimizedCryptoTGEMonitor
+        monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
+        logger.info(f"[{session_id}] Monitor instance created successfully")
+
+        # CRITICAL: Set session_id and db_session BEFORE running
+        monitor.session_id = session_id
+        monitor.db_session = db_session
+        logger.info(f"[{session_id}] Monitor configured with session tracking")
+
+        # Run monitoring cycle (will update session in real-time)
+        logger.info(f"[{session_id}] Starting monitoring cycle NOW")
+        monitor.run_monitoring_cycle()
+        logger.info(f"[{session_id}] Monitoring cycle completed successfully")
+
+        # Final update with complete results
+        session = db_session.query(MonitoringSession).filter(
+            MonitoringSession.session_id == session_id
+        ).first()
+
+        if session and monitor:
+            session.end_time = datetime.now(timezone.utc)
+            session.status = "completed"
+            session.articles_processed = monitor.current_cycle_stats.get('articles_processed', 0)
+            session.tweets_processed = monitor.current_cycle_stats.get('tweets_processed', 0)
+            session.alerts_generated = monitor.current_cycle_stats.get('alerts_generated', 0)
+            session.feeds_processed = monitor.current_cycle_stats.get('feeds_processed', 0)
+            session.errors_encountered = monitor.current_cycle_stats.get('errors_encountered', 0)
+
+            # Update performance metrics
+            current_metrics = session.performance_metrics or {}
+            current_metrics.update({
+                "cycle_time": time.time() - start_time,
+                "total_articles": monitor.current_cycle_stats.get('articles_processed', 0),
+                "total_tweets": monitor.current_cycle_stats.get('tweets_processed', 0),
+                "total_feeds": monitor.current_cycle_stats.get('feeds_processed', 0),
+                "total_alerts": monitor.current_cycle_stats.get('alerts_generated', 0),
+                "total_errors": monitor.current_cycle_stats.get('errors_encountered', 0),
+                "phase": "completed"
+            })
+            session.performance_metrics = current_metrics
+            flag_modified(session, 'performance_metrics')
+            db_session.commit()
+
+        logger.info(f"[{session_id}] Monitoring cycle completed successfully in {time.time() - start_time:.2f}s")
+
+    except Exception as e:
+        logger.error(f"[{session_id}] Error in monitoring cycle: {str(e)}", exc_info=True)
+
+        # Update session as failed
+        if db_session:
+            try:
+                session = db_session.query(MonitoringSession).filter(
+                    MonitoringSession.session_id == session_id
+                ).first()
+                if session:
+                    session.end_time = datetime.now(timezone.utc)
+                    session.status = "failed"
+                    session.errors_encountered = (session.errors_encountered or 0) + 1
+
+                    error_entry = {
+                        "error": str(e),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "type": type(e).__name__
+                    }
+
+                    if session.error_log:
+                        session.error_log.append(error_entry)
+                    else:
+                        session.error_log = [error_entry]
+
+                    # Also mark performance_metrics as failed
+                    if session.performance_metrics:
+                        session.performance_metrics['phase'] = 'failed'
+                        session.performance_metrics['error'] = str(e)
+                        flag_modified(session, 'performance_metrics')
+
+                    db_session.commit()
+                    logger.info(f"[{session_id}] Session marked as failed in database")
+            except Exception as update_error:
+                logger.error(f"[{session_id}] Error updating failed session: {str(update_error)}")
+
+    finally:
+        if db_session:
+            try:
+                db_session.close()
+                logger.info(f"[{session_id}] Database session closed")
+            except Exception as close_error:
+                logger.error(f"[{session_id}] Error closing database session: {str(close_error)}")
+
+
 # Monitoring endpoints
 @app.post("/monitoring/trigger")
-async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)):
-    """Trigger a manual monitoring cycle (public access)"""
+async def trigger_monitoring_cycle(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(DatabaseManager.get_db)
+):
+    """Trigger a manual monitoring cycle using FastAPI BackgroundTasks"""
     try:
         import uuid
         import sys
@@ -852,9 +990,6 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
         project_root = Path(__file__).parent.parent
         if str(project_root) not in sys.path:
             sys.path.insert(0, str(project_root))
-
-        # Import the monitor after fixing sys.path
-        from .main_optimized import OptimizedCryptoTGEMonitor
 
         # Generate session ID for this monitoring run
         session_id = str(uuid.uuid4())
@@ -868,148 +1003,9 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
         db.commit()
         db.refresh(monitoring_session)
 
-        # Run monitoring cycle in background - SIMPLIFIED THREADING
-        def run_cycle():
-            """Background thread for running monitoring cycle with timeout"""
-            db_session = None
-            monitor = None
-            start_time = time.time()
-
-            try:
-                import time
-                from sqlalchemy.orm.attributes import flag_modified
-
-                logger.info(f"[{session_id}] Background thread started")
-
-                # Get database session for real-time updates
-                db_session = DatabaseManager.SessionLocal()
-                logger.info(f"[{session_id}] Database session created in thread")
-
-                # Update progress IMMEDIATELY to show we started
-                session = db_session.query(MonitoringSession).filter(
-                    MonitoringSession.session_id == session_id
-                ).first()
-
-                if not session:
-                    raise Exception(f"Session {session_id} not found in database!")
-
-                # Set starting phase
-                session.performance_metrics = {'phase': 'starting', 'timestamp': datetime.now(timezone.utc).isoformat()}
-                flag_modified(session, 'performance_metrics')
-                db_session.commit()
-                db_session.flush()
-                logger.info(f"[{session_id}] Progress set to 'starting' (5%)")
-
-                # Check if database is seeded
-                from .models import Feed
-                feed_count = db_session.query(Feed).filter(Feed.is_active == True).count()
-                logger.info(f"[{session_id}] Found {feed_count} active feeds in database")
-
-                if feed_count == 0:
-                    logger.warning(f"[{session_id}] NO FEEDS SEEDED! Please call POST /seed-data first")
-
-                # Create monitor instance (this can be slow)
-                logger.info(f"[{session_id}] Creating monitor instance...")
-                session.performance_metrics = {'phase': 'initializing_monitor', 'timestamp': datetime.now(timezone.utc).isoformat()}
-                flag_modified(session, 'performance_metrics')
-                db_session.commit()
-
-                monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
-                logger.info(f"[{session_id}] Monitor instance created successfully")
-
-                # CRITICAL: Set session_id and db_session BEFORE running
-                monitor.session_id = session_id
-                monitor.db_session = db_session
-                logger.info(f"[{session_id}] Monitor configured with session tracking")
-
-                # Run monitoring cycle (will update session in real-time)
-                logger.info(f"[{session_id}] Starting monitoring cycle NOW")
-                monitor.run_monitoring_cycle()
-                logger.info(f"[{session_id}] Monitoring cycle completed successfully")
-
-                # Final update with complete results
-                session = db_session.query(MonitoringSession).filter(
-                    MonitoringSession.session_id == session_id
-                ).first()
-
-                if session and monitor:
-                    session.end_time = datetime.now(timezone.utc)
-                    session.status = "completed"
-                    session.articles_processed = monitor.current_cycle_stats.get('articles_processed', 0)
-                    session.tweets_processed = monitor.current_cycle_stats.get('tweets_processed', 0)
-                    session.alerts_generated = monitor.current_cycle_stats.get('alerts_generated', 0)
-                    session.feeds_processed = monitor.current_cycle_stats.get('feeds_processed', 0)
-                    session.errors_encountered = monitor.current_cycle_stats.get('errors_encountered', 0)
-
-                    # Update performance metrics
-                    current_metrics = session.performance_metrics or {}
-                    current_metrics.update({
-                        "cycle_time": time.time() - start_time,
-                        "total_articles": monitor.current_cycle_stats.get('articles_processed', 0),
-                        "total_tweets": monitor.current_cycle_stats.get('tweets_processed', 0),
-                        "total_feeds": monitor.current_cycle_stats.get('feeds_processed', 0),
-                        "total_alerts": monitor.current_cycle_stats.get('alerts_generated', 0),
-                        "total_errors": monitor.current_cycle_stats.get('errors_encountered', 0),
-                        "phase": "completed"
-                    })
-                    session.performance_metrics = current_metrics
-                    flag_modified(session, 'performance_metrics')
-                    db_session.commit()
-
-                logger.info(f"[{session_id}] Monitoring cycle completed successfully in {time.time() - start_time:.2f}s")
-
-            except Exception as e:
-                logger.error(f"[{session_id}] Error in monitoring cycle: {str(e)}", exc_info=True)
-
-                # Update session as failed
-                if db_session:
-                    try:
-                        session = db_session.query(MonitoringSession).filter(
-                            MonitoringSession.session_id == session_id
-                        ).first()
-                        if session:
-                            session.end_time = datetime.now(timezone.utc)
-                            session.status = "failed"
-                            session.errors_encountered = (session.errors_encountered or 0) + 1
-
-                            error_entry = {
-                                "error": str(e),
-                                "timestamp": datetime.now(timezone.utc).isoformat(),
-                                "type": type(e).__name__
-                            }
-
-                            if session.error_log:
-                                session.error_log.append(error_entry)
-                            else:
-                                session.error_log = [error_entry]
-
-                            # Also mark performance_metrics as failed
-                            if session.performance_metrics:
-                                session.performance_metrics['phase'] = 'failed'
-                                session.performance_metrics['error'] = str(e)
-                                from sqlalchemy.orm.attributes import flag_modified
-                                flag_modified(session, 'performance_metrics')
-
-                            db_session.commit()
-                            logger.info(f"[{session_id}] Session marked as failed in database")
-                    except Exception as update_error:
-                        logger.error(f"[{session_id}] Error updating failed session: {str(update_error)}")
-
-            finally:
-                if db_session:
-                    try:
-                        db_session.close()
-                        logger.info(f"[{session_id}] Database session closed")
-                    except Exception as close_error:
-                        logger.error(f"[{session_id}] Error closing database session: {str(close_error)}")
-
-        # Start background thread (non-daemon to ensure completion)
-        import threading
-        import time
-        thread = threading.Thread(target=run_cycle, name=f"monitoring-{session_id[:8]}")
-        thread.daemon = False  # Changed from True - thread will complete even if main exits
-        thread.start()
-        logger.info(f"Started monitoring thread for session {session_id}")
+        # Add background task (FastAPI BackgroundTasks - proper async way)
+        background_tasks.add_task(run_monitoring_cycle_task, session_id)
+        logger.info(f"Added monitoring cycle background task for session {session_id}")
 
         return {
             "message": "Monitoring cycle started successfully",
