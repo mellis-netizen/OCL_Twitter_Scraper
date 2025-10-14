@@ -868,122 +868,98 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
         db.commit()
         db.refresh(monitoring_session)
 
-        # Run monitoring cycle in background with timeout
+        # Run monitoring cycle in background - SIMPLIFIED THREADING
         def run_cycle():
+            """Background thread for running monitoring cycle with timeout"""
             db_session = None
+            monitor = None
+            start_time = time.time()
+
             try:
                 import time
-                import signal
-                import threading
-                start_time = time.time()
+                from sqlalchemy.orm.attributes import flag_modified
 
-                # Set maximum execution time (5 minutes)
-                MAX_EXECUTION_TIME = 300
-                cycle_completed = threading.Event()
+                logger.info(f"[{session_id}] Background thread started")
 
-                def execute_cycle():
-                    nonlocal db_session
-                    try:
-                        # Get database session for real-time updates
-                        db_session = DatabaseManager.SessionLocal()
-                        logger.info(f"[{session_id}] Database session created")
+                # Get database session for real-time updates
+                db_session = DatabaseManager.SessionLocal()
+                logger.info(f"[{session_id}] Database session created in thread")
 
-                        # Update progress IMMEDIATELY to show we started
-                        session = db_session.query(MonitoringSession).filter(
-                            MonitoringSession.session_id == session_id
-                        ).first()
-                        if not session:
-                            raise Exception(f"Session {session_id} not found in database!")
+                # Update progress IMMEDIATELY to show we started
+                session = db_session.query(MonitoringSession).filter(
+                    MonitoringSession.session_id == session_id
+                ).first()
 
-                        session.performance_metrics = {'phase': 'starting', 'timestamp': datetime.now(timezone.utc).isoformat()}
+                if not session:
+                    raise Exception(f"Session {session_id} not found in database!")
 
-                        # Mark as modified for SQLAlchemy JSON tracking
-                        from sqlalchemy.orm.attributes import flag_modified
-                        flag_modified(session, 'performance_metrics')
+                # Set starting phase
+                session.performance_metrics = {'phase': 'starting', 'timestamp': datetime.now(timezone.utc).isoformat()}
+                flag_modified(session, 'performance_metrics')
+                db_session.commit()
+                db_session.flush()
+                logger.info(f"[{session_id}] Progress set to 'starting' (5%)")
 
-                        db_session.commit()
-                        db_session.flush()
-                        logger.info(f"[{session_id}] Progress set to 'starting' (5%)")
+                # Check if database is seeded
+                from .models import Feed
+                feed_count = db_session.query(Feed).filter(Feed.is_active == True).count()
+                logger.info(f"[{session_id}] Found {feed_count} active feeds in database")
 
-                        # Check if database is seeded
-                        from .models import Feed
-                        feed_count = db_session.query(Feed).filter(Feed.is_active == True).count()
-                        logger.info(f"[{session_id}] Found {feed_count} active feeds in database")
+                if feed_count == 0:
+                    logger.warning(f"[{session_id}] NO FEEDS SEEDED! Please call POST /seed-data first")
 
-                        if feed_count == 0:
-                            logger.warning(f"[{session_id}] NO FEEDS SEEDED! Please call POST /seed-data first")
+                # Create monitor instance (this can be slow)
+                logger.info(f"[{session_id}] Creating monitor instance...")
+                session.performance_metrics = {'phase': 'initializing_monitor', 'timestamp': datetime.now(timezone.utc).isoformat()}
+                flag_modified(session, 'performance_metrics')
+                db_session.commit()
 
-                        # Create monitor instance (this can be slow)
-                        logger.info(f"[{session_id}] Creating monitor instance...")
-                        session.performance_metrics = {'phase': 'initializing_monitor', 'timestamp': datetime.now(timezone.utc).isoformat()}
-                        flag_modified(session, 'performance_metrics')
-                        db_session.commit()
+                monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
+                logger.info(f"[{session_id}] Monitor instance created successfully")
 
-                        monitor = OptimizedCryptoTGEMonitor(swarm_enabled=False)
-                        logger.info(f"[{session_id}] Monitor instance created successfully")
+                # CRITICAL: Set session_id and db_session BEFORE running
+                monitor.session_id = session_id
+                monitor.db_session = db_session
+                logger.info(f"[{session_id}] Monitor configured with session tracking")
 
-                        # CRITICAL: Set session_id and db_session BEFORE running
-                        monitor.session_id = session_id
-                        monitor.db_session = db_session
-                        logger.info(f"[{session_id}] Monitor configured with session tracking")
-
-                        # Run monitoring cycle (will update session in real-time)
-                        logger.info(f"[{session_id}] Starting monitoring cycle NOW")
-                        monitor.run_monitoring_cycle()
-                        logger.info(f"[{session_id}] Monitoring cycle completed successfully")
-                        cycle_completed.set()
-                    except Exception as e:
-                        logger.error(f"Error in execute_cycle for {session_id}: {str(e)}", exc_info=True)
-                        raise
-
-                # Start cycle in thread
-                cycle_thread = threading.Thread(target=execute_cycle, daemon=True)
-                cycle_thread.start()
-
-                # Wait for completion or timeout
-                cycle_thread.join(timeout=MAX_EXECUTION_TIME)
-
-                if not cycle_completed.is_set():
-                    logger.error(f"Monitoring cycle {session_id} timed out after {MAX_EXECUTION_TIME}s")
-                    raise TimeoutError(f"Scraping cycle exceeded maximum execution time of {MAX_EXECUTION_TIME}s")
+                # Run monitoring cycle (will update session in real-time)
+                logger.info(f"[{session_id}] Starting monitoring cycle NOW")
+                monitor.run_monitoring_cycle()
+                logger.info(f"[{session_id}] Monitoring cycle completed successfully")
 
                 # Final update with complete results
                 session = db_session.query(MonitoringSession).filter(
                     MonitoringSession.session_id == session_id
                 ).first()
 
-                if session:
+                if session and monitor:
                     session.end_time = datetime.now(timezone.utc)
                     session.status = "completed"
-                    session.articles_processed = monitor.current_cycle_stats['articles_processed']
-                    session.tweets_processed = monitor.current_cycle_stats['tweets_processed']
-                    session.alerts_generated = monitor.current_cycle_stats['alerts_generated']
-                    session.feeds_processed = monitor.current_cycle_stats['feeds_processed']
-                    session.errors_encountered = monitor.current_cycle_stats['errors_encountered']
+                    session.articles_processed = monitor.current_cycle_stats.get('articles_processed', 0)
+                    session.tweets_processed = monitor.current_cycle_stats.get('tweets_processed', 0)
+                    session.alerts_generated = monitor.current_cycle_stats.get('alerts_generated', 0)
+                    session.feeds_processed = monitor.current_cycle_stats.get('feeds_processed', 0)
+                    session.errors_encountered = monitor.current_cycle_stats.get('errors_encountered', 0)
 
                     # Update performance metrics
                     current_metrics = session.performance_metrics or {}
                     current_metrics.update({
                         "cycle_time": time.time() - start_time,
-                        "total_articles": monitor.current_cycle_stats['articles_processed'],
-                        "total_tweets": monitor.current_cycle_stats['tweets_processed'],
-                        "total_feeds": monitor.current_cycle_stats['feeds_processed'],
-                        "total_alerts": monitor.current_cycle_stats['alerts_generated'],
-                        "total_errors": monitor.current_cycle_stats['errors_encountered'],
+                        "total_articles": monitor.current_cycle_stats.get('articles_processed', 0),
+                        "total_tweets": monitor.current_cycle_stats.get('tweets_processed', 0),
+                        "total_feeds": monitor.current_cycle_stats.get('feeds_processed', 0),
+                        "total_alerts": monitor.current_cycle_stats.get('alerts_generated', 0),
+                        "total_errors": monitor.current_cycle_stats.get('errors_encountered', 0),
                         "phase": "completed"
                     })
                     session.performance_metrics = current_metrics
-
-                    # Mark as modified
-                    from sqlalchemy.orm.attributes import flag_modified
                     flag_modified(session, 'performance_metrics')
-
                     db_session.commit()
 
-                logger.info(f"Monitoring cycle {session_id} completed successfully")
+                logger.info(f"[{session_id}] Monitoring cycle completed successfully in {time.time() - start_time:.2f}s")
 
             except Exception as e:
-                logger.error(f"Error in monitoring cycle {session_id}: {str(e)}", exc_info=True)
+                logger.error(f"[{session_id}] Error in monitoring cycle: {str(e)}", exc_info=True)
 
                 # Update session as failed
                 if db_session:
@@ -1007,18 +983,33 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
                             else:
                                 session.error_log = [error_entry]
 
+                            # Also mark performance_metrics as failed
+                            if session.performance_metrics:
+                                session.performance_metrics['phase'] = 'failed'
+                                session.performance_metrics['error'] = str(e)
+                                from sqlalchemy.orm.attributes import flag_modified
+                                flag_modified(session, 'performance_metrics')
+
                             db_session.commit()
+                            logger.info(f"[{session_id}] Session marked as failed in database")
                     except Exception as update_error:
-                        logger.error(f"Error updating failed session: {str(update_error)}")
+                        logger.error(f"[{session_id}] Error updating failed session: {str(update_error)}")
 
             finally:
                 if db_session:
-                    db_session.close()
+                    try:
+                        db_session.close()
+                        logger.info(f"[{session_id}] Database session closed")
+                    except Exception as close_error:
+                        logger.error(f"[{session_id}] Error closing database session: {str(close_error)}")
 
-        # Start background thread
+        # Start background thread (non-daemon to ensure completion)
         import threading
-        thread = threading.Thread(target=run_cycle, daemon=True)
+        import time
+        thread = threading.Thread(target=run_cycle, name=f"monitoring-{session_id[:8]}")
+        thread.daemon = False  # Changed from True - thread will complete even if main exits
         thread.start()
+        logger.info(f"Started monitoring thread for session {session_id}")
 
         return {
             "message": "Monitoring cycle started successfully",
