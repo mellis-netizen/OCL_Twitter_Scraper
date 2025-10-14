@@ -974,6 +974,20 @@ def run_monitoring_cycle_task(session_id: str):
                 logger.error(f"[{session_id}] Error closing database session: {str(close_error)}")
 
 
+# Test endpoint to verify BackgroundTasks work
+@app.post("/monitoring/test-background")
+async def test_background_task(background_tasks: BackgroundTasks):
+    """Test if BackgroundTasks work in Railway environment"""
+    def simple_task():
+        import time
+        logger.info("TEST: Background task started!")
+        time.sleep(2)
+        logger.info("TEST: Background task completed!")
+
+    background_tasks.add_task(simple_task)
+    return {"message": "Test background task added - check logs in 2 seconds"}
+
+
 # Monitoring endpoints
 @app.post("/monitoring/trigger")
 async def trigger_monitoring_cycle(
