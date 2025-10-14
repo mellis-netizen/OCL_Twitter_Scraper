@@ -633,7 +633,7 @@ class OptimizedCryptoTGEMonitor:
                 for i, future in enumerate(futures):
                     try:
                         if i == 0:  # News
-                            articles = future.result()
+                            articles = future.result(timeout=150)  # 150 seconds for news scraping
                             logger.info(f"Fetched {len(articles)} news articles")
 
                             # Update counters
@@ -668,7 +668,7 @@ class OptimizedCryptoTGEMonitor:
                                 'timestamp': datetime.now(timezone.utc).isoformat()
                             })
 
-                            tweets = future.result()
+                            tweets = future.result(timeout=90)  # 90 seconds for Twitter scraping
                             logger.info(f"Fetched {len(tweets)} tweets")
 
                             # Update counters
@@ -692,8 +692,18 @@ class OptimizedCryptoTGEMonitor:
                                 'timestamp': datetime.now(timezone.utc).isoformat()
                             })
 
+                    except FuturesTimeoutError:
+                        scraper_name = "news" if i == 0 else "twitter"
+                        logger.error(f"{scraper_name.capitalize()} scraping timed out")
+                        self.current_cycle_stats['errors_encountered'] += 1
+                        self._update_progress('running', {
+                            'phase': 'timeout_error',
+                            'error': f'{scraper_name} scraping timed out',
+                            'timestamp': datetime.now(timezone.utc).isoformat()
+                        })
                     except Exception as e:
-                        logger.error(f"Error in scraper {i}: {str(e)}")
+                        scraper_name = "news" if i == 0 else "twitter"
+                        logger.error(f"Error in {scraper_name} scraper: {str(e)}")
                         self.current_cycle_stats['errors_encountered'] += 1
                         self._update_progress('running', {
                             'phase': 'error',
