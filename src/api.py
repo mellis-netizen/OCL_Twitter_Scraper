@@ -1017,14 +1017,24 @@ async def trigger_monitoring_cycle(db: Session = Depends(DatabaseManager.get_db)
         logger.info(f"Starting SYNCHRONOUS monitoring cycle for session {session_id}")
 
         # Run monitoring cycle SYNCHRONOUSLY (blocks request until complete)
-        # This is the only reliable way in Railway's environment
-        run_monitoring_cycle_task(session_id)
+        try:
+            run_monitoring_cycle_task(session_id)
+            logger.info(f"Monitoring cycle {session_id} completed successfully")
+        except Exception as task_error:
+            logger.error(f"CRITICAL: run_monitoring_cycle_task failed: {str(task_error)}", exc_info=True)
+            raise
 
-        logger.info(f"Monitoring cycle {session_id} completed")
+        # Refresh session to see updated values
+        db.expire_all()
+        final_session = db.query(MonitoringSession).filter(
+            MonitoringSession.session_id == session_id
+        ).first()
 
         return {
             "message": "Monitoring cycle completed successfully",
-            "session_id": session_id
+            "session_id": session_id,
+            "status": final_session.status if final_session else "unknown",
+            "articles_processed": final_session.articles_processed if final_session else 0
         }
     except Exception as e:
         logger.error(f"Error in monitoring cycle: {str(e)}", exc_info=True)
