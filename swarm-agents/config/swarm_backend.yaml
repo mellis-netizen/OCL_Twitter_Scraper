@@ -1,0 +1,101 @@
+# TGE Swarm Backend Configuration
+# Optimized for Token Generation Event monitoring and detection
+
+# Logging configuration
+log_level: 'INFO'
+log_dir: './logs'
+
+# Memory persistence
+memory_path: './safla-memory'
+
+# Redis cluster configuration for message queue
+redis_cluster:
+  - 'localhost:6379'
+
+# Message queue configuration
+message_queue:
+  cluster_name: 'tge-swarm'
+  max_retries: 3
+  retry_delay_ms: 1000
+  message_ttl_seconds: 3600
+  enable_persistence: true
+
+# Coordination service configuration
+coordination_service:
+  redis_url: 'redis://localhost:6379'
+  sync_interval: 90  # seconds
+  resource_lock_timeout: 300  # 5 minutes
+  enable_cross_pollination: true
+  conflict_resolution: 'queue-based'
+  max_coordination_events: 1000
+
+# Agent manager configuration
+agent_manager:
+  config_file: 'config/agent_manager.yaml'
+  max_agents_per_type: 5
+  health_check_interval: 30  # seconds
+  restart_threshold: 3
+  scale_up_threshold: 0.8  # 80% capacity
+  scale_down_threshold: 0.3  # 30% capacity
+  enable_auto_scaling: true
+
+# Task orchestrator configuration
+task_orchestrator:
+  scheduling_strategy: 'adaptive'  # adaptive, priority, round-robin
+  max_concurrent_tasks_per_agent: 3
+  task_timeout_seconds: 300
+  enable_task_retry: true
+  max_task_retries: 3
+  priority_queue_enabled: true
+
+# Optimization engine configuration
+optimization_engine:
+  project_root: '../'
+  auto_apply_low_risk: false
+  require_approval_threshold: 'medium'  # low, medium, high
+  enable_real_time_optimization: true
+  optimization_interval: 600  # 10 minutes
+  max_optimization_batch: 5
+
+# Dashboard server configuration
+dashboard_server:
+  host: 'localhost'
+  port: 8080
+  enable_websocket: true
+  websocket_heartbeat_interval: 30
+  enable_cors: true
+  cors_origins: ['*']
+  enable_metrics: true
+
+# Health monitoring configuration
+health_monitoring:
+  check_interval: 30  # seconds
+  restart_failed_services: true
+  max_restart_attempts: 3
+  alert_on_failure: true
+  enable_self_healing: true
+
+# Performance monitoring
+performance_monitoring:
+  enable_profiling: true
+  enable_memory_tracking: true
+  enable_cpu_tracking: true
+  metrics_collection_interval: 60  # seconds
+  enable_bottleneck_detection: true
+
+# Database configuration
+database:
+  url: 'postgresql://localhost:5432/tge_swarm'
+  pool_size: 10
+  max_overflow: 20
+  pool_timeout: 30
+  enable_echo: false
+
+# TGE-specific configuration
+tge_detection:
+  scraping_interval: 60  # seconds
+  news_sources_priority: 'high'
+  twitter_monitoring_priority: 'high'
+  enable_keyword_optimization: true
+  enable_false_positive_filtering: true
+  confidence_threshold: 0.75

@@ -1,0 +1,154 @@
+# Agent Manager Configuration for TGE Detection Swarm
+# Defines agent specifications and deployment parameters
+
+# Service discovery configuration
+consul_host: 'localhost'
+consul_port: 8500
+
+# Docker configuration
+docker_network: 'tge-swarm'
+registry_prefix: 'tge-swarm'
+
+# Default resource limits
+default_resources:
+  cpu_limit: '0.5'
+  memory_limit: '512m'
+
+# Scaling configuration
+max_agents_per_type: 5
+health_check_interval: 30
+restart_threshold: 3
+scale_up_threshold: 0.8
+scale_down_threshold: 0.3
+
+# Agent specifications
+agent_specs:
+  scraping-efficiency-specialist:
+    replicas: 2
+    cpu_limit: '1.0'
+    memory_limit: '1GB'
+    priority: 1
+    environment:
+      AGENT_TYPE: 'scraping-efficiency'
+      REDIS_URL: 'redis://redis-cluster:7001'
+      LOG_LEVEL: 'INFO'
+      TGE_FOCUS: 'scraper-performance'
+    capabilities:
+      - 'web-scraping'
+      - 'api-optimization'
+      - 'performance-tuning'
+      - 'concurrent-requests'
+    specializations:
+      - 'news-scraping'
+      - 'twitter-monitoring'
+      - 'rate-limit-optimization'
+      - 'cache-management'
+    health_check:
+      test: ['CMD', 'python', '-c', 'import requests; requests.get("http://localhost:8080/health")']
+      interval: '30s'
+      timeout: '10s'
+      retries: 3
+
+  keyword-precision-specialist:
+    replicas: 1
+    cpu_limit: '0.8'
+    memory_limit: '768m'
+    priority: 1
+    environment:
+      AGENT_TYPE: 'keyword-precision'
+      REDIS_URL: 'redis://redis-cluster:7001'
+      LOG_LEVEL: 'INFO'
+      TGE_FOCUS: 'keyword-accuracy'
+    capabilities:
+      - 'nlp'
+      - 'text-analysis'
+      - 'pattern-matching'
+      - 'context-scoring'
+    specializations:
+      - 'tge-keyword-matching'
+      - 'false-positive-elimination'
+      - 'company-name-disambiguation'
+      - 'context-aware-filtering'
+    health_check:
+      test: ['CMD', 'python', '-c', 'import requests; requests.get("http://localhost:8080/health")']
+      interval: '30s'
+      timeout: '10s'
+      retries: 3
+
+  api-reliability-optimizer:
+    replicas: 1
+    cpu_limit: '0.6'
+    memory_limit: '512m'
+    priority: 2
+    environment:
+      AGENT_TYPE: 'api-reliability'
+      REDIS_URL: 'redis://redis-cluster:7001'
+      LOG_LEVEL: 'INFO'
+      TGE_FOCUS: 'error-handling'
+    capabilities:
+      - 'error-handling'
+      - 'retry-logic'
+      - 'circuit-breakers'
+      - 'rate-limit-management'
+    specializations:
+      - 'twitter-api-optimization'
+      - 'news-api-reliability'
+      - 'graceful-degradation'
+      - 'backoff-strategies'
+    health_check:
+      test: ['CMD', 'python', '-c', 'import requests; requests.get("http://localhost:8080/health")']
+      interval: '30s'
+      timeout: '10s'
+      retries: 3
+
+  performance-optimizer:
+    replicas: 1
+    cpu_limit: '1.2'
+    memory_limit: '1GB'
+    priority: 2
+    environment:
+      AGENT_TYPE: 'performance-optimizer'
+      REDIS_URL: 'redis://redis-cluster:7001'
+      LOG_LEVEL: 'INFO'
+      TGE_FOCUS: 'bottleneck-elimination'
+    capabilities:
+      - 'profiling'
+      - 'memory-management'
+      - 'async-programming'
+      - 'database-optimization'
+    specializations:
+      - 'cpu-optimization'
+      - 'memory-leak-detection'
+      - 'async-pattern-optimization'
+      - 'query-optimization'
+    health_check:
+      test: ['CMD', 'python', '-c', 'import requests; requests.get("http://localhost:8080/health")']
+      interval: '30s'
+      timeout: '10s'
+      retries: 3
+
+  data-quality-enforcer:
+    replicas: 1
+    cpu_limit: '0.5'
+    memory_limit: '512m'
+    priority: 3
+    environment:
+      AGENT_TYPE: 'data-quality'
+      REDIS_URL: 'redis://redis-cluster:7001'
+      LOG_LEVEL: 'INFO'
+      TGE_FOCUS: 'data-validation'
+    capabilities:
+      - 'validation'
+      - 'sanitization'
+      - 'deduplication'
+      - 'data-quality'
+    specializations:
+      - 'tge-data-validation'
+      - 'duplicate-detection'
+      - 'company-attribution'
+      - 'timestamp-accuracy'
+    health_check:
+      test: ['CMD', 'python', '-c', 'import requests; requests.get("http://localhost:8080/health")']
+      interval: '30s'
+      timeout: '10s'
+      retries: 3
