@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc, and_, or_
 import uvicorn
 
@@ -33,6 +33,7 @@ from .auth import (
     optional_user, check_rate_limit, create_admin_user_if_not_exists
 )
 from .seed_data import seed_all_data
+from .middleware_security import setup_security_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -61,6 +62,9 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "Accept"],
     max_age=600,  # Cache preflight requests for 10 minutes
 )
+
+# Setup security middleware (rate limiting, security headers, request logging)
+setup_security_middleware(app)
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -547,8 +551,9 @@ async def list_alerts(
 ):
     """List alerts with filtering"""
     check_rate_limit(f"alerts:{current_user.id if current_user else 'anonymous'}", limit=1000, window=3600)
-    
-    query = db.query(Alert)
+
+    # Use joinedload to prevent N+1 query problem
+    query = db.query(Alert).options(joinedload(Alert.company))
     
     if filters.company_id:
         query = query.filter(Alert.company_id == filters.company_id)
